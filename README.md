@@ -15,6 +15,17 @@ python3 -m http.server 8080
 # http://localhost:8080 접속
 ```
 
+## 배포
+
+`main`에 푸시하면 `.github/workflows/deploy-pages.yml`이 저장소 루트를 그대로 GitHub Pages로 배포합니다. 빌드 단계는 없습니다.
+
+**최초 1회만 수동 설정이 필요합니다.** Actions의 기본 토큰은 Pages 사이트를 새로 만들 권한이 없어서, 저장소 설정에서 한 번 켜줘야 합니다.
+
+1. Settings → Pages → Build and deployment → Source를 **GitHub Actions**로 변경
+2. Actions 탭에서 `Deploy to GitHub Pages` 워크플로를 **Re-run**
+
+이후 주소는 `https://dhlee0903.github.io/memeGen/` 입니다.
+
 ## 사용 방법
 
 1. **템플릿 선택** — 왼쪽 목록에서 원하는 배치를 고릅니다.
