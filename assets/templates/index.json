@@ -18,6 +18,12 @@
       "name": "죽음으로 맛없는데",
       "desc": "",
       "file": "assets/templates/user/user-msr93qqt.json"
+    },
+    {
+      "id": "user-msr9v8i1",
+      "name": "그럼죽어",
+      "desc": "",
+      "file": "assets/templates/user/user-msr9v8i1.json"
     }
   ],
   "trash": [
