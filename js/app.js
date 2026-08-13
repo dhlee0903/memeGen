@@ -764,6 +764,129 @@
     pushHistory();
   }
 
+  /* ── 복사 · 붙여넣기 ───────────────────────────────── */
+
+  var slotClipboard = null;   // 시스템 클립보드를 못 읽는 경우를 위한 내부 보관
+
+  function selectedSlot() {
+    if (!state.template || !state.selectedId) return null;
+    return state.template.slots.filter(function (s) { return s.id === state.selectedId; })[0] || null;
+  }
+
+  /** 입력칸에 포커스가 있으면 클립보드를 가로채지 않는다 */
+  function isEditableFocused() {
+    var a = document.activeElement;
+    if (!a) return false;
+    var t = a.tagName;
+    return t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || a.isContentEditable;
+  }
+
+  /* 글자가 선택돼 있으면 그 글자를 복사하려는 것이다.
+   * 붙여넣기는 다르다 — 어디가 선택돼 있든 상관없으므로 막지 않는다. */
+  function hasTextSelection() {
+    var sel = window.getSelection();
+    return !!(sel && String(sel).length);
+  }
+
+  function encodeSlot(slot) {
+    return JSON.stringify({ app: 'memegen', kind: 'slot', slot: slot }, null, 2);
+  }
+
+  function decodeSlot(text) {
+    if (!text || text.length > 40 * 1024 * 1024) return null;
+    try {
+      var o = JSON.parse(text);
+      if (o && o.app === 'memegen' && o.kind === 'slot' && o.slot && o.slot.type) return o.slot;
+    } catch (e) { /* 우리 형식이 아니면 무시 */ }
+    return null;
+  }
+
+  function pasteSlot(src) {
+    var tpl = state.template;
+    var copy = clone(src);
+    copy.id = MG.uid(copy.type === 'text' ? 't' : 'i');
+    copy.name = (copy.name || '칸') + ' 복사';
+
+    // 살짝 옮겨 놓되 캔버스 밖으로는 나가지 않게 한다
+    copy.x = Math.round(copy.x) + 16;
+    copy.y = Math.round(copy.y) + 16;
+    if (copy.x + copy.w > tpl.width) copy.x = Math.max(0, tpl.width - copy.w);
+    if (copy.y + copy.h > tpl.height) copy.y = Math.max(0, tpl.height - copy.h);
+
+    tpl.slots.push(copy);
+    state.selectedId = copy.id;
+
+    function done() {
+      buildSlotList();
+      MG.editor.requestDraw();
+      pushHistory();
+      toast('붙여넣었어요: ' + copy.name);
+    }
+    // 사진이 붙어 있으면 그림을 먼저 불러온 뒤 그린다
+    if (copy.type === 'image' && copy.src) MG.loadImage(copy.src).then(done, done);
+    else done();
+  }
+
+  /** 클립보드의 사진을 빈 사진 칸에 넣는다 */
+  function pasteImage(file) {
+    var slot = selectedSlot();
+    if (!slot || slot.type !== 'image') {
+      slot = state.template.slots.filter(function (s) { return s.type === 'image' && !s.src; })[0];
+    }
+    if (!slot) {
+      addSlot('image');
+      slot = selectedSlot();
+    }
+    if (!slot) return;
+    state.selectedId = slot.id;
+    applyImageFile(slot, file);
+  }
+
+  function bindClipboard() {
+    document.addEventListener('copy', function (e) {
+      if (isEditableFocused() || hasTextSelection()) return;
+      var slot = selectedSlot();
+      if (!slot || !e.clipboardData) return;
+      e.preventDefault();
+      slotClipboard = clone(slot);
+      e.clipboardData.setData('text/plain', encodeSlot(slotClipboard));
+      toast('복사했어요: ' + (slot.name || '칸'));
+    });
+
+    document.addEventListener('cut', function (e) {
+      if (isEditableFocused() || hasTextSelection()) return;
+      var slot = selectedSlot();
+      if (!slot || !e.clipboardData) return;
+      e.preventDefault();
+      slotClipboard = clone(slot);
+      e.clipboardData.setData('text/plain', encodeSlot(slotClipboard));
+      deleteSlot(slot.id);
+      toast('잘라냈어요: ' + (slot.name || '칸'));
+    });
+
+    document.addEventListener('paste', function (e) {
+      if (isEditableFocused()) return;
+      var dt = e.clipboardData;
+      if (!dt) return;
+
+      // 1) 클립보드에 사진이 있으면 사진 칸에 넣는다
+      var files = dt.files || [];
+      for (var i = 0; i < files.length; i++) {
+        if (/^image\//.test(files[i].type)) {
+          e.preventDefault();
+          pasteImage(files[i]);
+          return;
+        }
+      }
+
+      // 2) 복사해 둔 칸
+      var slot = decodeSlot(dt.getData('text/plain')) || slotClipboard;
+      if (!slot) return;
+      e.preventDefault();
+      pasteSlot(slot);
+    });
+  }
+
   /* ── 말풍선 자동 찾기 ──────────────────────────────── */
 
   /** 캔버스 대부분을 덮는 사진 칸 = 배경 */
@@ -1306,6 +1429,7 @@
   function init() {
     cacheEls();
     bindUi();
+    bindClipboard();
     attachEditor();
     buildSavedList();
     setupAdmin();

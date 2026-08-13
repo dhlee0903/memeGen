@@ -193,15 +193,55 @@
     var s = d.slot;
 
     if (d.mode === 'move') {
+      // Shift: 더 많이 움직인 쪽 축으로만 이동한다
+      if (e.shiftKey) {
+        if (Math.abs(dx) >= Math.abs(dy)) dy = 0; else dx = 0;
+      }
       s.x = Math.round(d.orig.x + dx);
       s.y = Math.round(d.orig.y + dy);
     } else {
       var o = d.orig;
+      var H = d.handle;
       var left = o.x, top = o.y, right = o.x + o.w, bottom = o.y + o.h;
-      if (d.handle.indexOf('w') !== -1) left = Math.min(o.x + dx, right - MIN_SIZE);
-      if (d.handle.indexOf('e') !== -1) right = Math.max(o.x + o.w + dx, left + MIN_SIZE);
-      if (d.handle.indexOf('n') !== -1) top = Math.min(o.y + dy, bottom - MIN_SIZE);
-      if (d.handle.indexOf('s') !== -1) bottom = Math.max(o.y + o.h + dy, top + MIN_SIZE);
+      if (H.indexOf('w') !== -1) left = Math.min(o.x + dx, right - MIN_SIZE);
+      if (H.indexOf('e') !== -1) right = Math.max(o.x + o.w + dx, left + MIN_SIZE);
+      if (H.indexOf('n') !== -1) top = Math.min(o.y + dy, bottom - MIN_SIZE);
+      if (H.indexOf('s') !== -1) bottom = Math.max(o.y + o.h + dy, top + MIN_SIZE);
+
+      // Shift: 원래 가로세로 비율을 지킨다
+      if (e.shiftKey && o.w > 0 && o.h > 0) {
+        var ratio = o.w / o.h;
+        var nw = right - left;
+        var nh = bottom - top;
+
+        if (H.length === 2) {
+          // 모서리 — 더 많이 바뀐 쪽을 기준으로 나머지를 맞춘다
+          if (Math.abs(nw - o.w) >= Math.abs(nh - o.h)) nh = nw / ratio;
+          else nw = nh * ratio;
+        } else if (H === 'e' || H === 'w') {
+          nh = nw / ratio;
+        } else {
+          nw = nh * ratio;
+        }
+        nw = Math.max(MIN_SIZE, nw);
+        nh = Math.max(MIN_SIZE, nh);
+
+        // 잡지 않은 쪽 모서리를 고정한 채 다시 배치
+        if (H.indexOf('w') !== -1) left = right - nw; else right = left + nw;
+        if (H.indexOf('n') !== -1) top = bottom - nh; else bottom = top + nh;
+
+        // 변 손잡이는 반대 축을 중심 기준으로 늘린다
+        if (H === 'e' || H === 'w') {
+          var cy = o.y + o.h / 2;
+          top = cy - nh / 2;
+          bottom = top + nh;
+        } else if (H === 'n' || H === 's') {
+          var cx = o.x + o.w / 2;
+          left = cx - nw / 2;
+          right = left + nw;
+        }
+      }
+
       s.x = Math.round(left);
       s.y = Math.round(top);
       s.w = Math.round(right - left);

@@ -140,6 +140,11 @@ GitHub → Settings → Developer settings → **Fine-grained tokens** 에서 �
 
 | 키 | 동작 |
 | --- | --- |
+| Ctrl/Cmd + C | 선택한 칸 복사 |
+| Ctrl/Cmd + X | 선택한 칸 잘라내기 |
+| Ctrl/Cmd + V | 칸 붙여넣기 (클립보드에 사진이 있으면 사진 칸에 넣음) |
+| Shift + 드래그 | 한 축으로만 이동 |
+| Shift + 크기조정 | 가로세로 비율 유지 |
 | 방향키 | 선택한 칸 1px 이동 (Shift: 10px) |
 | Delete / Backspace | 선택한 칸 삭제 |
 | Esc | 선택 해제 |
@@ -147,6 +152,17 @@ GitHub → Settings → Developer settings → **Fine-grained tokens** 에서 �
 | Ctrl/Cmd + Shift + Z | 다시 실행 |
 | Ctrl/Cmd + S | 브라우저에 저장 |
 | Ctrl/Cmd + E | PNG 내보내기 |
+
+## 복사 · 붙여넣기
+
+선택한 칸을 `Ctrl+C` 로 복사해 `Ctrl+V` 로 붙여넣습니다. 원래 자리에서 16px 어긋나게 놓이고,
+캔버스 밖으로 나가면 안쪽으로 당겨집니다.
+
+클립보드에는 JSON 으로 들어가므로 **다른 템플릿이나 다른 탭에도 붙여넣을 수 있습니다.**
+클립보드에 사진이 있으면 `Ctrl+V` 가 그 사진을 선택한 사진 칸(없으면 첫 빈 사진 칸)에 넣습니다.
+
+입력칸에 커서가 있거나 글자를 선택한 상태에서는 가로채지 않으므로, 대사를 복사·붙여넣는
+평소 동작은 그대로입니다.
 
 ## 글꼴
 
