@@ -177,7 +177,7 @@
 
     var spread = 0.22; // 꼬리 밑변 각도
     function pointOn(angle) {
-      if (slot.bubble === 'round' || slot.bubble === 'none') {
+      if (slot.bubble === 'round' || slot.bubble === 'box' || slot.bubble === 'none') {
         // 사각형 테두리 위의 점
         var dx = Math.cos(angle), dy = Math.sin(angle);
         var t = Math.min(Math.abs(rx / (dx || 1e-6)), Math.abs(ry / (dy || 1e-6)));
@@ -197,6 +197,9 @@
     ctx.closePath();
     ctx.fillStyle = '#ffffff';
     ctx.fill();
+
+    if (slot.bubble === 'box') return;   // 테두리 없는 박스는 꼬리도 선 없이
+
     ctx.lineWidth = 3;
     ctx.strokeStyle = '#111111';
     // 밑변은 말풍선 안쪽이므로 두 변만 그린다
@@ -273,6 +276,7 @@
     var padX, padY;
     if (slot.bubble === 'ellipse') { padX = slot.w * 0.14; padY = slot.h * 0.16; }
     else if (slot.bubble === 'round') { padX = 14; padY = 12; }
+    else if (slot.bubble === 'box') { padX = 10; padY = 7; }
     else { padX = 4; padY = 2; }
 
     var boxW = Math.max(10, slot.w - padX * 2);
@@ -282,12 +286,20 @@
     if (slot.bubble !== 'none') {
       drawTail(ctx, slot);
       if (slot.bubble === 'ellipse') ellipsePath(ctx, slot.x, slot.y, slot.w, slot.h);
-      else roundRectPath(ctx, slot.x, slot.y, slot.w, slot.h, 18);
+      else if (slot.bubble === 'box') {
+        ctx.beginPath();
+        ctx.rect(slot.x, slot.y, slot.w, slot.h);
+      } else roundRectPath(ctx, slot.x, slot.y, slot.w, slot.h, 18);
+
       ctx.fillStyle = '#ffffff';
       ctx.fill();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = '#111111';
-      ctx.stroke();
+
+      // 'box' 는 테두리 없는 흰 박스다
+      if (slot.bubble !== 'box') {
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#111111';
+        ctx.stroke();
+      }
     }
 
     if (!slot.text) return;

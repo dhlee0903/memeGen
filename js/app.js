@@ -459,7 +459,8 @@
 
     var row1 = el('div', 'row');
     row1.appendChild(selectField('말풍선', slot, 'bubble', [
-      ['ellipse', '둥근 말풍선'], ['round', '사각 말풍선'], ['none', '없음(글자만)']
+      ['ellipse', '둥근 말풍선'], ['round', '사각 말풍선'],
+      ['box', '흰 박스(테두리 없음)'], ['none', '없음(글자만)']
     ]));
     row1.appendChild(selectField('꼬리', slot, 'tail', [
       ['none', '없음'], ['bottom', '아래'], ['bottom-left', '왼쪽 아래'],
