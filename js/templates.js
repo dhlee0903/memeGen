@@ -296,7 +296,58 @@
     };
   }
 
-  /* ── 7) 빈 캔버스 ───────────────────────────────────── */
+  /* ── 7) 삼형제 6컷 ──────────────────────────────────
+   * 이 페이지에는 말풍선이 그려져 있지 않다. 그래서 흰 사각 말풍선을
+   * 직접 얹는다(bubble:'round'). 칸 경계는 그림에 있으므로 panels 는 비운다.
+   */
+  function brothers6() {
+    var W = 594, H = 674;
+
+    /* 말풍선을 얹을 자리 [x, y, w, h] — 칸마다 하나씩, 위쪽에 배치한다.
+     * 아래 세 칸은 위쪽이 밝은 바위라 글자가 잘 얹히고,
+     * 위 칸들은 인물을 가장 덜 가리는 위치를 골랐다. 드래그로 옮길 수 있다. */
+    var boxes = [
+      [12, 10, 150, 42],    // 1컷 외치는 남자
+      [240, 8, 170, 46],    // 2컷 삼형제
+      [12, 191, 200, 44],   // 3컷 놀란 모자
+      [10, 376, 172, 56],   // 4컷
+      [211, 376, 172, 56],  // 5컷
+      [412, 376, 172, 56]   // 6컷
+    ];
+
+    var slots = [
+      imageSlot({
+        name: '배경 (만화 페이지)',
+        x: 0, y: 0, w: W, h: H,
+        src: (global.MG && global.MG.ASSETS && global.MG.ASSETS['brothers-6-page']) || null,
+        fit: 'fill'
+      })
+    ];
+
+    boxes.forEach(function (bx, i) {
+      slots.push(textSlot({
+        name: (i + 1) + '컷 대사',
+        x: bx[0], y: bx[1], w: bx[2], h: bx[3],
+        text: '',
+        bubble: 'round',   // 그림에 말풍선이 없으니 직접 그린다
+        tail: 'none',
+        fontSize: 20,
+        autoFit: true
+      }));
+    });
+
+    return {
+      id: 'brothers-6',
+      name: '삼형제 6컷',
+      desc: '말풍선 없는 페이지 · 칸마다 흰 말풍선 6개',
+      width: W, height: H,
+      background: '#ffffff',
+      panels: [],
+      slots: slots
+    };
+  }
+
+  /* ── 8) 빈 캔버스 ───────────────────────────────────── */
   function blank() {
     return {
       id: 'blank', name: '빈 캔버스', desc: '처음부터 자유롭게',
@@ -306,6 +357,7 @@
 
   var BUILDERS = [
     comicPage8,
+    brothers6,
     comicGrid('comic-8', '만화 8컷', '2열 × 4행 · "이거 다 똑같은 거 아니에요?"', 2, 4, 800, 1000,
       ['이건 A', '이건 B', '이건 C', '이건 D', '전부 똑같은 거 아니에요?', '이건 E', '이래서 알못들은!', '다르다니까!!']),
     comicGrid('comic-4', '만화 4컷', '2열 × 2행 기본 만화', 2, 2, 800, 620,
