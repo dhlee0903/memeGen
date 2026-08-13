@@ -8,7 +8,7 @@
   "panels": [],
   "slots": [
     {
-      "id": "i_msrky595_468",
+      "id": "i_msrle4m7_416",
       "type": "image",
       "name": "배경 사진",
       "x": 0,
@@ -23,7 +23,7 @@
       "radius": 0
     },
     {
-      "id": "t_msrky595_469",
+      "id": "t_msrle4m7_417",
       "type": "text",
       "name": "대사 1",
       "x": 6,
@@ -41,7 +41,7 @@
       "stroke": false
     },
     {
-      "id": "t_msrky595_470",
+      "id": "t_msrle4m7_418",
       "type": "text",
       "name": "대사 2",
       "x": 136,
@@ -59,7 +59,7 @@
       "stroke": false
     },
     {
-      "id": "t_msrl3263_473",
+      "id": "t_msrle4m7_419",
       "type": "text",
       "name": "대사 5",
       "x": 9,
@@ -78,7 +78,7 @@
       "stroke": false
     },
     {
-      "id": "t_msrl6j21_474",
+      "id": "t_msrle4m7_420",
       "type": "text",
       "name": "대사 1 복사",
       "x": 4,
@@ -96,7 +96,7 @@
       "stroke": false
     },
     {
-      "id": "t_msrl6qmd_475",
+      "id": "t_msrle4m7_421",
       "type": "text",
       "name": "대사 2 복사",
       "x": 134,
@@ -114,7 +114,7 @@
       "stroke": false
     },
     {
-      "id": "t_msrl892p_476",
+      "id": "t_msrle4m7_422",
       "type": "text",
       "name": "대사 5 복사",
       "x": 12,
@@ -128,6 +128,96 @@
       "bold": true,
       "align": "center",
       "color": "#298623",
+      "bubble": "none",
+      "tail": "none",
+      "stroke": false
+    },
+    {
+      "id": "t_msrlfc4t_423",
+      "type": "text",
+      "name": "대사 2 복사",
+      "x": 242,
+      "y": 15,
+      "w": 245,
+      "h": 24,
+      "text": "- 시간이 오래 걸림",
+      "fontSize": 17,
+      "autoFit": false,
+      "bold": true,
+      "align": "left",
+      "color": "#da0b0b",
+      "bubble": "none",
+      "tail": "none",
+      "stroke": false
+    },
+    {
+      "id": "t_msrlgiy9_424",
+      "type": "text",
+      "name": "대사 2 복사 복사",
+      "x": 242,
+      "y": 58,
+      "w": 246,
+      "h": 24,
+      "text": "- 지적허영심을 뽐내는 것 같음",
+      "fontSize": 17,
+      "autoFit": false,
+      "bold": true,
+      "align": "left",
+      "color": "#da0b0b",
+      "bubble": "none",
+      "tail": "none",
+      "stroke": false
+    },
+    {
+      "id": "t_msrlh6f0_425",
+      "type": "text",
+      "name": "대사 2 복사 복사 복사",
+      "x": 241,
+      "y": 181,
+      "w": 255,
+      "h": 24,
+      "text": "- 논쟁에서 밀리면 내 세상이 무너짐",
+      "fontSize": 17,
+      "autoFit": false,
+      "bold": true,
+      "align": "left",
+      "color": "#da0b0b",
+      "bubble": "none",
+      "tail": "none",
+      "stroke": false
+    },
+    {
+      "id": "t_msrlhq0h_426",
+      "type": "text",
+      "name": "대사 2 복사 복사 복사 복사",
+      "x": 243,
+      "y": 135,
+      "w": 255,
+      "h": 24,
+      "text": "- 논쟁 발생 가능성 100%",
+      "fontSize": 17,
+      "autoFit": false,
+      "bold": true,
+      "align": "left",
+      "color": "#da0b0b",
+      "bubble": "none",
+      "tail": "none",
+      "stroke": false
+    },
+    {
+      "id": "t_msrligdy_427",
+      "type": "text",
+      "name": "대사 2 복사 복사 복사 복사 복사",
+      "x": 243,
+      "y": 97,
+      "w": 255,
+      "h": 24,
+      "text": "- 지루하고 현학적임",
+      "fontSize": 17,
+      "autoFit": false,
+      "bold": true,
+      "align": "left",
+      "color": "#da0b0b",
       "bubble": "none",
       "tail": "none",
       "stroke": false
