@@ -8,7 +8,7 @@
   "panels": [],
   "slots": [
     {
-      "id": "i_msr7bwfd_320",
+      "id": "i_msr896oi_324",
       "type": "image",
       "name": "배경 (만화 페이지)",
       "x": 0,
@@ -23,13 +23,13 @@
       "radius": 0
     },
     {
-      "id": "t_msr7bwfd_321",
+      "id": "t_msr896oi_325",
       "type": "text",
       "name": "1컷 대사",
       "x": 153,
-      "y": 7,
+      "y": 23,
       "w": 70,
-      "h": 146,
+      "h": 120,
       "text": "개노답\n삼형제다",
       "fontSize": 20,
       "autoFit": true,
@@ -41,7 +41,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr7bwfd_323",
+      "id": "t_msr896oi_326",
       "type": "text",
       "name": "3컷 대사",
       "x": 169,
@@ -59,7 +59,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr7bwfd_324",
+      "id": "t_msr896oi_327",
       "type": "text",
       "name": "6-1",
       "x": 108,
@@ -77,7 +77,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr7bwfd_325",
+      "id": "t_msr896oi_328",
       "type": "text",
       "name": "5-1",
       "x": 320,
@@ -95,7 +95,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr7bwfd_326",
+      "id": "t_msr896oi_329",
       "type": "text",
       "name": "4-1",
       "x": 538,
@@ -113,7 +113,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr7co00_327",
+      "id": "t_msr896oi_330",
       "type": "text",
       "name": "4-2",
       "x": 407,
@@ -131,7 +131,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr7deiw_328",
+      "id": "t_msr896oi_331",
       "type": "text",
       "name": "5-2",
       "x": 206,
@@ -149,7 +149,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr7e9io_329",
+      "id": "t_msr896oi_332",
       "type": "text",
       "name": "6-2",
       "x": 4,
@@ -166,6 +166,5 @@
       "tail": "none",
       "stroke": false
     }
-  ],
-  "published": true
+  ]
 }
