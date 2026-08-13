@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>밈 생성기 — 템플릿으로 만드는 짤 제작기</title>
+<meta name="description" content="템플릿을 고르고 대사와 사진을 채워 밈 이미지를 만드는 웹 도구." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6bff'/%3E%3Cellipse cx='16' cy='14' rx='10' ry='7' fill='%23fff'/%3E%3Cpath d='M13 20l-2 6 7-5z' fill='%23fff'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">MG</span>
+    <div>
+      <h1>밈 생성기</h1>
+      <p>템플릿 고르고 · 대사 채우고 · 사진 넣고</p>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <button id="btn-undo" class="btn ghost" title="되돌리기 (Ctrl+Z)">↶ 되돌리기</button>
+    <button id="btn-redo" class="btn ghost" title="다시 실행 (Ctrl+Shift+Z)">↷ 다시</button>
+    <span class="divider"></span>
+    <button id="btn-save" class="btn ghost">저장</button>
+    <button id="btn-load" class="btn ghost">불러오기</button>
+    <button id="btn-export-json" class="btn ghost">JSON 내보내기</button>
+    <button id="btn-import-json" class="btn ghost">JSON 가져오기</button>
+    <span class="divider"></span>
+    <button id="btn-download" class="btn primary">PNG 다운로드</button>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- ── 왼쪽: 템플릿 갤러리 ───────────────────────────── -->
+  <aside class="panel panel-left" id="panel-left">
+    <div class="panel-head">
+      <h2>템플릿</h2>
+      <button class="icon-btn panel-toggle" data-target="panel-left" title="접기">◀</button>
+    </div>
+    <div class="panel-body">
+      <div class="gallery" id="gallery"></div>
+
+      <div class="section">
+        <h3>내 이미지로 시작</h3>
+        <p class="hint">배경 사진을 올리면 그 위에 대사·사진 칸을 직접 그릴 수 있어요.</p>
+        <label class="btn block">
+          배경 이미지 업로드
+          <input type="file" id="custom-bg" accept="image/*" hidden />
+        </label>
+      </div>
+
+      <div class="section">
+        <h3>저장된 작업</h3>
+        <div id="saved-list" class="saved-list"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── 가운데: 캔버스 ────────────────────────────────── -->
+  <section class="stage" id="stage">
+    <div class="stage-toolbar">
+      <div class="tool-group">
+        <button class="btn small" id="btn-add-text">＋ 대사 칸</button>
+        <button class="btn small" id="btn-add-image">＋ 사진 칸</button>
+      </div>
+      <div class="tool-group">
+        <button class="btn small ghost" id="btn-zoom-out">−</button>
+        <span class="zoom-label" id="zoom-label">100%</span>
+        <button class="btn small ghost" id="btn-zoom-in">＋</button>
+        <button class="btn small ghost" id="btn-zoom-fit">맞춤</button>
+      </div>
+      <div class="tool-group">
+        <label class="check"><input type="checkbox" id="chk-guides" checked /> 안내선</label>
+      </div>
+    </div>
+
+    <div class="canvas-wrap" id="canvas-wrap">
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <p class="stage-hint">칸을 드래그해 옮기고, 모서리를 끌어 크기를 바꾸세요. 사진 칸을 더블클릭하면 이미지를 고를 수 있어요.</p>
+  </section>
+
+  <!-- ── 오른쪽: 속성 편집 ─────────────────────────────── -->
+  <aside class="panel panel-right" id="panel-right">
+    <div class="panel-head">
+      <button class="icon-btn panel-toggle" data-target="panel-right" title="접기">▶</button>
+      <h2>내용 채우기</h2>
+    </div>
+    <div class="panel-body">
+      <div class="section" id="doc-props"></div>
+      <div id="slot-list" class="slot-list"></div>
+      <p class="empty-note" id="empty-note" hidden>칸이 없습니다. 위의 <b>＋ 대사 칸</b> / <b>＋ 사진 칸</b> 버튼으로 추가하세요.</p>
+    </div>
+  </aside>
+
+</main>
+
+<input type="file" id="hidden-image-input" accept="image/*" hidden />
+<input type="file" id="hidden-json-input" accept="application/json,.json" hidden />
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="js/templates.js" defer></script>
+<script src="js/renderer.js" defer></script>
+<script src="js/editor.js" defer></script>
+<script src="js/app.js" defer></script>
+</body>
+</html>
