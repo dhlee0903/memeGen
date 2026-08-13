@@ -374,18 +374,45 @@
   global.MG.textSlot = textSlot;
   global.MG.imageSlot = imageSlot;
 
+  /* 저장소에 게시된 템플릿(assets/templates/index.json 에서 불러온 것).
+   * 코드에 박힌 내장 템플릿과 달리 실행 중에 추가된다. */
+  var PUBLISHED = [];
+
+  function reid(tpl) {
+    // 슬롯 id 가 겹치면 선택/편집이 엉키므로 인스턴스마다 새로 발급한다
+    var copy = JSON.parse(JSON.stringify(tpl));
+    copy.slots.forEach(function (s) { s.id = uid(s.type === 'text' ? 't' : 'i'); });
+    return copy;
+  }
+
+  /** 게시된 템플릿을 갤러리에 추가 */
+  global.MG.addTemplate = function (tpl) {
+    if (!tpl || !tpl.id || !Array.isArray(tpl.slots)) return false;
+    var i = PUBLISHED.findIndex(function (t) { return t.id === tpl.id; });
+    tpl.published = true;
+    if (i === -1) PUBLISHED.push(tpl); else PUBLISHED[i] = tpl;
+    return true;
+  };
+
+  global.MG.removeTemplate = function (id) {
+    PUBLISHED = PUBLISHED.filter(function (t) { return t.id !== id; });
+  };
+
   /** 매번 새 인스턴스를 만들어 반환(슬롯 id 중복 방지) */
   global.MG.buildTemplate = function (id) {
     for (var i = 0; i < BUILDERS.length; i++) {
       var t = BUILDERS[i]();
       if (t.id === id) return t;
     }
+    for (var j = 0; j < PUBLISHED.length; j++) {
+      if (PUBLISHED[j].id === id) return reid(PUBLISHED[j]);
+    }
     return null;
   };
 
-  /** 갤러리 표시용 목록 */
+  /** 갤러리 표시용 목록 — 게시된 것이 먼저 */
   global.MG.listTemplates = function () {
-    return BUILDERS.map(function (b) { return b(); });
+    return PUBLISHED.map(reid).concat(BUILDERS.map(function (b) { return b(); }));
   };
 
   /** 업로드한 배경 이미지로 만드는 커스텀 템플릿 */

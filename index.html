@@ -75,6 +75,12 @@
       <div class="tool-group">
         <label class="check"><input type="checkbox" id="chk-guides" checked /> 안내선</label>
       </div>
+      <div class="tool-group admin-tools" id="admin-tools" hidden>
+        <span class="admin-badge">관리자</span>
+        <button class="btn small primary" id="btn-publish">🚀 게시</button>
+        <button class="btn small ghost" id="btn-unpublish" hidden>게시 취소</button>
+        <button class="btn small ghost" id="btn-token">토큰 없음</button>
+      </div>
     </div>
 
     <div class="canvas-wrap" id="canvas-wrap">
@@ -109,6 +115,8 @@
 <script src="js/templates.js" defer></script>
 <script src="js/renderer.js" defer></script>
 <script src="js/detect.js" defer></script>
+<script src="js/library.js" defer></script>
+<script src="js/admin.js" defer></script>
 <script src="js/editor.js" defer></script>
 <script src="js/app.js" defer></script>
 </body>

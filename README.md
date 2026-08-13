@@ -26,6 +26,42 @@ python3 -m http.server 8080
 
 이후 주소는 `https://dhlee0903.github.io/memeGen/` 입니다.
 
+## 템플릿 게시 (관리자)
+
+만든 템플릿을 사이트에 올려 누구나 쓰게 할 수 있습니다. **별도 DB나 서버는 없습니다** —
+저장소가 곧 데이터베이스입니다.
+
+```
+assets/templates/index.json        게시 목록
+assets/templates/user/<id>.json    템플릿 하나
+```
+
+앱은 시작할 때 이 두 가지를 읽어 갤러리 맨 앞에 붙입니다. 게시는 이 파일들을
+GitHub API 로 커밋하는 것이고, 커밋되면 Pages 가 다시 배포되면서 모두에게 보입니다.
+
+### 게시하는 법
+
+1. `https://dhlee0903.github.io/memeGen/admin.html` 로 들어갑니다.
+2. 평소처럼 템플릿을 고쳐 말풍선 위치·크기를 맞춥니다.
+3. 위쪽 **🚀 게시** 를 누르고 이름과 설명을 입력합니다.
+4. 처음 한 번은 GitHub 토큰을 물어봅니다. 아래를 참고해 발급하세요.
+5. 1분쯤 뒤 배포가 끝나면 모두에게 보입니다. 같은 이름으로 다시 게시하면 덮어씁니다.
+
+`게시 취소` 를 누르면 목록과 파일이 함께 지워집니다.
+
+### 토큰
+
+GitHub → Settings → Developer settings → **Fine-grained tokens** 에서 이 저장소만 지정하고
+**Contents: Read and write** 권한으로 발급하세요.
+
+**주소(`admin.html`)는 잠금장치가 아닙니다.** 누구나 열 수 있고, 열어도 관리자 화면이 보입니다.
+실제 권한은 토큰이 쥐고 있어서 토큰이 없으면 아무것도 게시하지 못합니다. 토큰은 이 브라우저의
+`localStorage` 에만 저장되고 저장소에는 들어가지 않습니다. 공용 컴퓨터에서 썼다면 `토큰 지우기`
+를 눌러 지우세요.
+
+내장 템플릿을 고쳐 게시하면 배경 그림은 다시 올라가지 않고 `asset:<키>` 참조로만 기록됩니다.
+직접 올린 배경은 게시 파일 안에 data URI 로 함께 담깁니다.
+
 ## 사용 방법
 
 1. **템플릿 선택** — 왼쪽 목록에서 원하는 배치를 고릅니다.
@@ -94,15 +130,20 @@ python3 -m http.server 8080
 
 ```
 index.html          화면 구조
+admin.html          관리자 모드로 들어가는 주소 (index.html?admin=1 로 넘김)
 css/style.css       스타일
 assets/templates/   내장 템플릿 이미지
   comic-8-page.webp     원본 만화 페이지 (622×959)
   comic-8-page.js       위 이미지를 data URI 로 담은 것 — 앱이 실제로 읽는 쪽
   brothers-6-page.webp  삼형제 6컷 페이지 (594×674)
   brothers-6-page.js    〃
+  index.json            게시 목록 — 게시할 때 갱신됨
+  user/                 게시된 템플릿 JSON
 js/templates.js     내장 템플릿 정의 · 슬롯 기본값
 js/renderer.js      캔버스 렌더링 (말풍선 · 줄바꿈 · 이미지 배치 · 내보내기)
 js/detect.js        배경 만화에서 빈 말풍선 자동 인식
+js/library.js       게시된 템플릿 불러오기 (매니페스트 → 템플릿 JSON)
+js/admin.js         템플릿 게시 (GitHub API 로 저장소에 커밋)
 js/editor.js        캔버스 편집 (선택 · 이동 · 크기조절 · 확대축소 · 키보드)
 js/app.js           상태 관리 · 속성 패널 · 저장/불러오기 · 다운로드
 ```

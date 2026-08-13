@@ -18,6 +18,9 @@
 
 * { box-sizing: border-box; }
 
+/* display 를 지정한 클래스가 hidden 속성을 이기는 일이 없도록 못박는다 */
+[hidden] { display: none !important; }
+
 html, body {
   height: 100%;
   margin: 0;
@@ -404,6 +407,45 @@ h1, h2, h3 { margin: 0; }
   border: 1px dashed var(--line);
   border-radius: var(--radius);
 }
+
+/* ── 관리자 ────────────────────────────────────────── */
+.admin-tools {
+  padding: 3px 3px 3px 8px;
+  border: 1px solid rgba(255, 178, 122, .35);
+  border-radius: 999px;
+  background: rgba(255, 140, 60, .08);
+}
+.admin-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: #ffb27a;
+  margin-right: 2px;
+}
+
+/* ── 모달 ──────────────────────────────────────────── */
+.modal-back {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .6);
+  display: grid;
+  place-items: center;
+  z-index: 100;
+  padding: 20px;
+}
+.modal {
+  width: min(460px, 100%);
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .6);
+}
+.modal h3 { font-size: 15px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
 /* ── 토스트 ────────────────────────────────────────── */
 .toast {

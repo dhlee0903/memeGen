@@ -116,6 +116,8 @@
       pushHistory();
       if (!opts || !opts.silent) toast('템플릿을 불러왔어요: ' + tpl.name);
       markActiveTemplate(tpl.id);
+      if (tpl.published) tpl.publishedId = tpl.id;
+      updateAdminButtons();
     });
   }
 
@@ -969,12 +971,82 @@
     });
   }
 
+  /* ── 관리자 모드 (게시) ────────────────────────────── */
+  function setupAdmin() {
+    if (!MG.isAdmin || !MG.isAdmin()) return;
+    document.body.classList.add('is-admin');
+
+    var group = $('#admin-tools');
+    group.hidden = false;
+
+    $('#btn-publish').addEventListener('click', function () {
+      var tpl = state.template;
+      var title = prompt('게시할 템플릿 이름', tpl.publishedId ? tpl.name : state.title);
+      if (title === null) return;
+      title = title.trim();
+      if (!title) { toast('이름을 입력해주세요.'); return; }
+      var desc = prompt('한 줄 설명 (비워도 됩니다)', tpl.desc || '');
+      if (desc === null) return;
+
+      toast('게시하는 중…');
+      MG.admin.publish(tpl, title, desc).then(function (id) {
+        tpl.publishedId = id;
+        // 배포를 기다리지 않고 갤러리에 바로 반영한다
+        var entry = clone(tpl);
+        entry.id = id;
+        entry.name = title;
+        entry.desc = desc;
+        MG.addTemplate(entry);
+        buildGallery();
+        markActiveTemplate(id);
+        toast('게시했어요. 사이트 반영까지 1분쯤 걸립니다.');
+        updateAdminButtons();
+      }).catch(function (err) {
+        toast(err.message || '게시하지 못했습니다.');
+      });
+    });
+
+    $('#btn-unpublish').addEventListener('click', function () {
+      var id = state.template.publishedId || state.template.id;
+      if (!confirm('"' + state.template.name + '" 게시를 취소할까요? 사이트에서 사라집니다.')) return;
+      toast('게시 취소하는 중…');
+      MG.admin.unpublish(id).then(function () {
+        MG.removeTemplate(id);
+        delete state.template.publishedId;
+        buildGallery();
+        markActiveTemplate(state.template.id);
+        toast('게시를 취소했어요.');
+        updateAdminButtons();
+      }).catch(function (err) {
+        toast(err.message || '게시를 취소하지 못했습니다.');
+      });
+    });
+
+    $('#btn-token').addEventListener('click', function () {
+      MG.admin.forgetToken();
+      toast('토큰을 지웠습니다. 다음 게시 때 다시 물어봅니다.');
+      updateAdminButtons();
+    });
+  }
+
+  function updateAdminButtons() {
+    if (!MG.isAdmin || !MG.isAdmin() || !state.template) return;
+    var published = !!(state.template.publishedId || state.template.published);
+    $('#btn-unpublish').hidden = !published;
+    $('#btn-token').textContent = MG.admin.hasToken() ? '토큰 지우기' : '토큰 없음';
+  }
+
   function init() {
     cacheEls();
     bindUi();
     attachEditor();
     buildSavedList();
-    preloadBuiltinAssets().then(function () {
+    setupAdmin();
+
+    Promise.all([preloadBuiltinAssets(), MG.loadLibrary()]).then(function () {
+      // 게시된 템플릿이 배경 이미지를 쓰면 썸네일 전에 로드해 둔다
+      return preloadBuiltinAssets();
+    }).then(function () {
       buildGallery();
       return setTemplate(MG.buildTemplate('comic-page-8'), { silent: true });
     });
