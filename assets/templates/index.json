@@ -12,6 +12,12 @@
       "desc": "",
       "file": "assets/templates/user/comic-page-8.json",
       "overrides": true
+    },
+    {
+      "id": "user-msr93qqt",
+      "name": "죽음으로 맛없는데",
+      "desc": "",
+      "file": "assets/templates/user/user-msr93qqt.json"
     }
   ],
   "trash": [
