@@ -77,6 +77,10 @@
   }
 
   /* ── GitHub API ────────────────────────────────────── */
+  /* GitHub API 는 CORS 로 허용하는 요청 헤더가 정해져 있다
+   * (Authorization, Content-Type, If-Match, If-None-Match, X-GitHub-Api-Version …).
+   * 목록에 없는 헤더를 넣으면 preflight 가 막혀 fetch 자체가 실패한다.
+   * 그래서 캐시는 헤더가 아니라 fetch 의 cache 모드와 쿼리로 비껴간다. */
   async function api(path, opts) {
     var res = await fetch(API + path, Object.assign({
       // 캐시된 응답을 쓰면 오래된 sha 로 커밋하게 되어 409 가 난다
@@ -85,13 +89,17 @@
       headers: Object.assign({
         'Authorization': 'Bearer ' + getToken(),
         'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-        // 인증된 GitHub API 응답은 max-age=60 으로 내려온다. 그대로 캐시되면
-        // 1분 동안 옛 sha 를 들고 커밋하게 된다.
-        'Cache-Control': 'no-cache'
+        'X-GitHub-Api-Version': '2022-11-28'
       }, (opts && opts.headers) || {})
     }));
     return res;
+  }
+
+  /** 캐시를 확실히 비껴가려고 GET 주소에 붙이는 값 (GitHub 은 모르는 인자를 무시한다) */
+  var bustSeq = 0;
+  function bust() {
+    bustSeq += 1;
+    return '_=' + bustSeq + '.' + (performance.now() | 0);
   }
 
   /** 한글이 섞인 문자열을 base64 로 (btoa 는 라틴1만 받는다) */
@@ -103,7 +111,7 @@
   }
 
   async function getFile(path) {
-    var r = await api('/contents/' + path + '?ref=' + BRANCH);
+    var r = await api('/contents/' + path + '?ref=' + BRANCH + '&' + bust());
     if (r.status === 404) return null;
     if (!r.ok) throw new Error(await describe(r));
     return r.json();
@@ -158,6 +166,7 @@
     if (res.status === 403) return '쓰기 권한이 없습니다. 토큰의 Contents 를 Read and write 로 바꾸세요.' + tail;
     if (res.status === 404) return '이 토큰으로는 저장소가 보이지 않습니다. Repository access 에서 memeGen 을 골랐는지 확인하세요.' + tail;
     if (res.status === 409) return '저장소가 그 사이 바뀌어 몇 번 다시 시도했지만 안 됐습니다. 잠시 뒤 다시 눌러주세요.' + tail;
+    if (res.status === 422) return '보낸 내용을 GitHub 이 받지 못했습니다.' + tail;
     return 'GitHub ' + res.status + tail;
   }
 
@@ -166,7 +175,7 @@
    * 파일을 반쯤 쓰다 실패하는 것보다 먼저 걸러내는 편이 낫다.
    */
   async function checkAccess() {
-    var r = await api('');
+    var r = await api('?' + bust());
     if (!r.ok) throw new Error(await describe(r));
 
     var repo = await r.json();
