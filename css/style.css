@@ -352,6 +352,33 @@ h1, h2, h3 { margin: 0; }
 
 .check-row { display: flex; flex-wrap: wrap; gap: 10px; }
 
+/* 아이콘 세그먼트 (정렬 등) */
+.seg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  padding: 2px;
+  background: var(--bg-input);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.seg-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  padding: 5px 0;
+  border-radius: 6px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background .12s, color .12s;
+}
+.seg-btn:hover { background: #232b36; color: var(--text); }
+.seg-btn.active { background: var(--accent); color: #fff; }
+.seg-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.seg-btn svg { display: block; }
+
 .img-picker { display: flex; gap: 9px; align-items: center; }
 .img-preview {
   width: 62px; height: 62px;

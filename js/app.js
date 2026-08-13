@@ -221,19 +221,59 @@
     box.appendChild(bgRow);
   }
 
-  /* ── 속성 패널 (슬롯 목록) ─────────────────────────── */
+  /* ── 속성 패널 (선택한 칸만) ───────────────────────── */
+
+  /** 칸이 겹쳐 캔버스로 고르기 어려운 경우를 위한 목록 */
+  function slotPicker() {
+    var tpl = state.template;
+    var wrap = el('label', 'field');
+    wrap.appendChild(el('span', 'field-label', '칸 고르기'));
+
+    var sel = el('select', 'input');
+    var none = el('option', null, '— 선택 안 함 —');
+    none.value = '';
+    sel.appendChild(none);
+
+    tpl.slots.forEach(function (slot) {
+      var opt = el('option', null, (slot.type === 'text' ? '💬 ' : '🖼 ') + (slot.name || '이름 없음'));
+      opt.value = slot.id;
+      sel.appendChild(opt);
+    });
+    sel.value = state.selectedId || '';
+    sel.addEventListener('change', function () {
+      select(sel.value || null);
+      MG.editor.requestDraw();
+    });
+
+    wrap.appendChild(sel);
+    return wrap;
+  }
+
   function buildSlotList() {
     var list = els.slotList;
     list.innerHTML = '';
     var tpl = state.template;
     if (!tpl) return;
 
-    els.emptyNote.hidden = tpl.slots.length > 0;
+    var hasSlots = tpl.slots.length > 0;
+    if (hasSlots) list.appendChild(slotPicker());
 
-    tpl.slots.forEach(function (slot, index) {
-      list.appendChild(slot.type === 'text' ? textCard(slot, index) : imageCard(slot, index));
-    });
-    highlightSelected();
+    var index = -1;
+    if (state.selectedId) {
+      index = tpl.slots.findIndex(function (s) { return s.id === state.selectedId; });
+    }
+
+    if (index === -1) {
+      els.emptyNote.hidden = false;
+      els.emptyNote.textContent = hasSlots
+        ? '캔버스에서 칸을 누르거나 위 목록에서 골라주세요.'
+        : '칸이 없습니다. 위의 ＋ 대사 칸 / ＋ 사진 칸 버튼으로 추가하세요.';
+      return;
+    }
+
+    els.emptyNote.hidden = true;
+    var slot = tpl.slots[index];
+    list.appendChild(slot.type === 'text' ? textCard(slot, index) : imageCard(slot, index));
   }
 
   function cardHeader(slot, index) {
@@ -295,9 +335,8 @@
   }
 
   function makeCard(slot, index) {
-    var card = el('div', 'slot-card');
+    var card = el('div', 'slot-card selected');
     card.dataset.slotId = slot.id;
-    card.addEventListener('mousedown', function () { select(slot.id); });
     card.appendChild(cardHeader(slot, index));
     return card;
   }
@@ -345,6 +384,48 @@
     return wrap;
   }
 
+  /** 정렬 아이콘 (막대 네 줄의 치우침으로 방향을 보여준다) */
+  function alignIcon(kind) {
+    var rows = [14, 9, 14, 7];
+    var svg = '<svg viewBox="0 0 18 15" width="16" height="14" aria-hidden="true" focusable="false">';
+    rows.forEach(function (w, i) {
+      var x = kind === 'left' ? 2 : (kind === 'right' ? 16 - w : (18 - w) / 2);
+      svg += '<rect x="' + x + '" y="' + (i * 3.5 + 1.2) + '" width="' + w +
+        '" height="1.9" rx=".95" fill="currentColor"/>';
+    });
+    return svg + '</svg>';
+  }
+
+  function alignField(slot) {
+    var wrap = el('div', 'field');
+    wrap.appendChild(el('span', 'field-label', '정렬'));
+
+    var seg = el('div', 'seg');
+    [['left', '왼쪽'], ['center', '가운데'], ['right', '오른쪽']].forEach(function (o) {
+      var btn = el('button', 'seg-btn');
+      btn.type = 'button';
+      btn.title = o[1];
+      btn.setAttribute('aria-label', o[1]);
+      btn.setAttribute('aria-pressed', String(slot.align === o[0]));
+      btn.innerHTML = alignIcon(o[0]);
+      btn.classList.toggle('active', slot.align === o[0]);
+      btn.addEventListener('click', function () {
+        slot.align = o[0];
+        Array.prototype.forEach.call(seg.children, function (b) {
+          var on = b === btn;
+          b.classList.toggle('active', on);
+          b.setAttribute('aria-pressed', String(on));
+        });
+        MG.editor.requestDraw();
+        pushHistory();
+      });
+      seg.appendChild(btn);
+    });
+
+    wrap.appendChild(seg);
+    return wrap;
+  }
+
   function checkField(labelText, slot, key) {
     var wrap = el('label', 'check');
     var input = el('input');
@@ -364,7 +445,7 @@
     var card = makeCard(slot, index);
 
     var ta = el('textarea', 'textarea');
-    ta.rows = 2;
+    ta.rows = 3;
     ta.value = slot.text;
     ta.placeholder = '대사를 입력하세요 (Enter로 줄바꿈)';
     ta.dataset.role = 'text';
@@ -387,9 +468,7 @@
     card.appendChild(row1);
 
     var row2 = el('div', 'row');
-    row2.appendChild(selectField('정렬', slot, 'align', [
-      ['center', '가운데'], ['left', '왼쪽'], ['right', '오른쪽']
-    ]));
+    row2.appendChild(alignField(slot));
     var colorWrap = el('label', 'field');
     colorWrap.appendChild(el('span', 'field-label', '글자색'));
     var color = el('input', 'input color');
@@ -462,20 +541,8 @@
   function select(id) {
     if (state.selectedId === id) return;
     state.selectedId = id;
-    highlightSelected();
+    buildSlotList();
     MG.editor.requestDraw();
-  }
-
-  function highlightSelected() {
-    Array.prototype.forEach.call(els.slotList.children, function (card) {
-      card.classList.toggle('selected', card.dataset.slotId === state.selectedId);
-    });
-  }
-
-  function scrollToSelected() {
-    if (!state.selectedId) return;
-    var card = els.slotList.querySelector('[data-slot-id="' + state.selectedId + '"]');
-    if (card) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 
   function moveSlot(index, dir) {
@@ -528,7 +595,6 @@
     tpl.slots.push(slot);
     state.selectedId = slot.id;
     buildSlotList();
-    scrollToSelected();
     MG.editor.requestDraw();
     pushHistory();
   }
@@ -875,9 +941,9 @@
       getTemplate: function () { return state.template; },
       getSelectedId: function () { return state.selectedId; },
       setSelectedId: function (id) {
+        if (state.selectedId === id) return;
         state.selectedId = id;
-        highlightSelected();
-        scrollToSelected();
+        buildSlotList();
       },
       onSlotGeometry: function (slot) {
         var card = els.slotList.querySelector('[data-slot-id="' + slot.id + '"]');
