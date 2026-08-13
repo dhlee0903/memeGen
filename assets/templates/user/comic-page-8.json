@@ -8,7 +8,7 @@
   "panels": [],
   "slots": [
     {
-      "id": "i_msr8apd5_333",
+      "id": "i_msr8ebf9_345",
       "type": "image",
       "name": "배경 (만화 페이지)",
       "x": 0,
@@ -23,7 +23,7 @@
       "radius": 0
     },
     {
-      "id": "i_msr8apd5_334",
+      "id": "i_msr8ebf9_346",
       "type": "image",
       "name": "1컷 사진",
       "x": 116,
@@ -38,7 +38,7 @@
       "radius": 0
     },
     {
-      "id": "i_msr8apd5_335",
+      "id": "i_msr8ebf9_347",
       "type": "image",
       "name": "2컷 사진",
       "x": 432,
@@ -53,7 +53,7 @@
       "radius": 0
     },
     {
-      "id": "i_msr8apd5_336",
+      "id": "i_msr8ebf9_348",
       "type": "image",
       "name": "3컷 사진",
       "x": 110,
@@ -68,7 +68,7 @@
       "radius": 0
     },
     {
-      "id": "i_msr8apd5_337",
+      "id": "i_msr8ebf9_349",
       "type": "image",
       "name": "4컷 사진",
       "x": 413,
@@ -83,7 +83,7 @@
       "radius": 0
     },
     {
-      "id": "i_msr8apd5_338",
+      "id": "i_msr8ebf9_350",
       "type": "image",
       "name": "5컷 사진",
       "x": 86,
@@ -98,7 +98,7 @@
       "radius": 0
     },
     {
-      "id": "i_msr8apd5_339",
+      "id": "i_msr8ebf9_351",
       "type": "image",
       "name": "6컷 사진",
       "x": 430,
@@ -113,7 +113,7 @@
       "radius": 0
     },
     {
-      "id": "i_msr8apd5_340",
+      "id": "i_msr8ebf9_352",
       "type": "image",
       "name": "7컷 사진",
       "x": 100,
@@ -128,7 +128,7 @@
       "radius": 0
     },
     {
-      "id": "i_msr8apd5_341",
+      "id": "i_msr8ebf9_353",
       "type": "image",
       "name": "8컷 사진",
       "x": 407,
@@ -143,7 +143,7 @@
       "radius": 0
     },
     {
-      "id": "t_msr8apd5_342",
+      "id": "t_msr8ebf9_354",
       "type": "text",
       "name": "1컷 대사",
       "x": 21,
@@ -161,7 +161,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr8apd5_343",
+      "id": "t_msr8ebf9_355",
       "type": "text",
       "name": "2컷 대사",
       "x": 360,
@@ -179,7 +179,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr8apd5_344",
+      "id": "t_msr8ebf9_356",
       "type": "text",
       "name": "3컷 대사",
       "x": 18,
@@ -197,7 +197,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr8apd5_345",
+      "id": "t_msr8ebf9_357",
       "type": "text",
       "name": "4컷 대사",
       "x": 325,
@@ -215,7 +215,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr8apd5_346",
+      "id": "t_msr8ebf9_358",
       "type": "text",
       "name": "5컷 대사 1",
       "x": 61,
@@ -233,15 +233,15 @@
       "stroke": false
     },
     {
-      "id": "t_msr8apd5_347",
+      "id": "t_msr8ebf9_359",
       "type": "text",
       "name": "5컷 대사 2",
-      "x": 164,
-      "y": 439,
-      "w": 67,
-      "h": 73,
+      "x": 156,
+      "y": 427,
+      "w": 86,
+      "h": 92,
       "text": "이래서\n초짜들은!",
-      "fontSize": 22,
+      "fontSize": 38,
       "autoFit": true,
       "bold": true,
       "align": "center",
@@ -251,7 +251,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr8apd5_348",
+      "id": "t_msr8ebf9_360",
       "type": "text",
       "name": "5컷 대사 3",
       "x": 239,
@@ -269,15 +269,15 @@
       "stroke": false
     },
     {
-      "id": "t_msr8apd5_349",
+      "id": "t_msr8ebf9_361",
       "type": "text",
       "name": "6컷 대사 1",
-      "x": 418,
-      "y": 448,
-      "w": 68,
-      "h": 78,
+      "x": 407,
+      "y": 433,
+      "w": 89,
+      "h": 100,
       "text": "전부\n똑같은 거\n아닌가요?",
-      "fontSize": 22,
+      "fontSize": 27,
       "autoFit": true,
       "bold": true,
       "align": "center",
@@ -287,7 +287,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr8apd5_350",
+      "id": "t_msr8ebf9_362",
       "type": "text",
       "name": "6컷 대사 2",
       "x": 520,
@@ -305,7 +305,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr8apd5_351",
+      "id": "t_msr8ebf9_363",
       "type": "text",
       "name": "7컷 대사 1",
       "x": 123,
@@ -323,7 +323,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr8apd5_352",
+      "id": "t_msr8ebf9_364",
       "type": "text",
       "name": "7컷 대사 2",
       "x": 225,
@@ -341,7 +341,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr8apd5_353",
+      "id": "t_msr8ebf9_365",
       "type": "text",
       "name": "8컷 대사",
       "x": 481,
