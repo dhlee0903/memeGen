@@ -14,7 +14,18 @@
       "overrides": true
     }
   ],
-  "hidden": [
-    "brothers-6"
+  "trash": [
+    {
+      "id": "brothers-6",
+      "name": "brothers-6",
+      "builtin": true
+    },
+    {
+      "id": "comic-8",
+      "name": "만화 8컷",
+      "desc": "2열 × 4행 · \"이거 다 똑같은 거 아니에요?\"",
+      "builtin": true,
+      "deletedAt": "2026-08-13T08:06:19.007Z"
+    }
   ]
 }
