@@ -145,10 +145,14 @@
   function buildGallery() {
     var list = MG.listTemplates();
     els.gallery.innerHTML = '';
+    var admin = MG.isAdmin && MG.isAdmin();
+
     list.forEach(function (tpl) {
-      var card = el('button', 'tpl-card');
-      card.type = 'button';
+      // 삭제 버튼을 품어야 해서 카드는 button 이 아니라 div 다(버튼 중첩 불가)
+      var card = el('div', 'tpl-card');
       card.dataset.templateId = tpl.id;
+      card.tabIndex = 0;
+      card.setAttribute('role', 'button');
 
       var thumb = el('div', 'tpl-thumb');
       var img = new Image();
@@ -162,11 +166,49 @@
 
       card.appendChild(thumb);
       card.appendChild(meta);
-      card.addEventListener('click', function () {
+
+      function open() {
         var fresh = MG.buildTemplate(tpl.id);
         if (fresh) setTemplate(fresh);
+      }
+      card.addEventListener('click', open);
+      card.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
       });
+
+      // 게시된 템플릿만 지울 수 있다. 내장 템플릿은 코드에 있어 지울 수 없다.
+      if (admin && tpl.published) {
+        var del = el('button', 'tpl-del', '✕');
+        del.type = 'button';
+        del.title = '이 템플릿 삭제';
+        del.setAttribute('aria-label', tpl.name + ' 삭제');
+        del.addEventListener('click', function (e) {
+          e.stopPropagation();
+          deletePublished(tpl.id, tpl.name);
+        });
+        card.appendChild(del);
+      }
+
       els.gallery.appendChild(card);
+    });
+  }
+
+  /** 게시된 템플릿을 저장소에서 지운다 */
+  function deletePublished(id, name) {
+    if (!confirm('"' + name + '" 템플릿을 삭제할까요?\n사이트에서 사라지고 되돌릴 수 없습니다.')) return;
+
+    toast('삭제하는 중…');
+    var wasOpen = state.template && (state.template.publishedId || state.template.id) === id;
+
+    MG.admin.unpublish(id).then(function () {
+      MG.removeTemplate(id);
+      buildGallery();
+      toast('삭제했어요. 사이트 반영까지 1분쯤 걸립니다.');
+      // 지금 열려 있던 템플릿이면 기본 템플릿으로 돌아간다
+      if (wasOpen) return setTemplate(MG.buildTemplate('comic-page-8'), { silent: true });
+      markActiveTemplate(state.template.id);
+    }).catch(function (err) {
+      toast(err.message || '삭제하지 못했습니다.');
     });
   }
 
@@ -1006,22 +1048,6 @@
       });
     });
 
-    $('#btn-unpublish').addEventListener('click', function () {
-      var id = state.template.publishedId || state.template.id;
-      if (!confirm('"' + state.template.name + '" 게시를 취소할까요? 사이트에서 사라집니다.')) return;
-      toast('게시 취소하는 중…');
-      MG.admin.unpublish(id).then(function () {
-        MG.removeTemplate(id);
-        delete state.template.publishedId;
-        buildGallery();
-        markActiveTemplate(state.template.id);
-        toast('게시를 취소했어요.');
-        updateAdminButtons();
-      }).catch(function (err) {
-        toast(err.message || '게시를 취소하지 못했습니다.');
-      });
-    });
-
     $('#btn-token').addEventListener('click', function () {
       if (!MG.admin.hasToken()) {
         MG.admin.askToken().then(function () { updateAdminButtons(); });
@@ -1041,9 +1067,7 @@
   }
 
   function updateAdminButtons() {
-    if (!MG.isAdmin || !MG.isAdmin() || !state.template) return;
-    var published = !!(state.template.publishedId || state.template.published);
-    $('#btn-unpublish').hidden = !published;
+    if (!MG.isAdmin || !MG.isAdmin()) return;
     $('#btn-token').textContent = MG.admin.hasToken() ? '토큰 점검' : '토큰 입력';
   }
 
