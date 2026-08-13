@@ -30,6 +30,11 @@ jobs:
         with:
           enablement: true
 
+      # 브라우저가 옛 js/css 를 캐시해 배포가 반영 안 되는 일을 막는다.
+      # GitHub Pages 는 max-age 를 길게 주므로 파일 주소에 커밋 해시를 붙인다.
+      - name: 캐시 무력화 (자산 주소에 커밋 해시 붙이기)
+        run: sed -i "s/?v=dev/?v=${GITHUB_SHA:0:8}/g" index.html
+
       - name: 정적 파일 업로드
         uses: actions/upload-pages-artifact@v3
         with:
