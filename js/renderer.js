@@ -8,6 +8,31 @@
 
   var FONT_STACK = '"Pretendard","Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo","맑은 고딕",sans-serif';
 
+  /* 고를 수 있는 글꼴.
+   * 웹폰트를 내려받지 않고 기기에 있는 글꼴을 쓴다. 한글 웹폰트는 한 벌에
+   * 1MB 안팎이라 세 벌을 담으면 앱이 그만큼 무거워진다.
+   * 대신 기기에 그 글꼴이 없으면 뒤쪽 후보로 대체된다. */
+  var FONTS = {
+    gothic: {
+      label: '고딕 (기본)',
+      stack: FONT_STACK
+    },
+    myeongjo: {
+      label: '명조',
+      stack: '"Nanum Myeongjo","AppleMyungjo","Batang","바탕","Songti SC",serif'
+    },
+    gulim: {
+      label: '굴림 · 돋움',
+      stack: '"Gulim","굴림","Dotum","돋움","Nanum Gothic","AppleGothic",sans-serif'
+    }
+  };
+
+  MG.FONTS = FONTS;
+  MG.fontStack = function (key) { return (FONTS[key] || FONTS.gothic).stack; };
+  MG.fontList = function () {
+    return Object.keys(FONTS).map(function (k) { return [k, FONTS[k].label]; });
+  };
+
   /* 로드된 이미지 캐시: dataURL/URL -> HTMLImageElement */
   var imageCache = Object.create(null);
 
@@ -121,6 +146,7 @@
   function fitFontSize(ctx, slot, boxW, boxH) {
     var size = slot.fontSize;
     var weight = slot.bold ? '700' : '400';
+    var face = MG.fontStack(slot.font);
     var min = 8;
 
     // 직접 넣은 줄바꿈이 있으면 그 구조를 지키는 크기를 먼저 찾는다.
@@ -129,7 +155,7 @@
     if (paras.length > 1) {
       var floor = Math.max(min, Math.round(slot.fontSize * 0.5));
       for (var ps = size; ps >= floor; ps--) {
-        ctx.font = weight + ' ' + ps + 'px ' + FONT_STACK;
+        ctx.font = weight + ' ' + ps + 'px ' + face;
         var pWidest = 0;
         for (var pi = 0; pi < paras.length; pi++) {
           pWidest = Math.max(pWidest, ctx.measureText(paras[pi]).width);
@@ -142,7 +168,7 @@
     }
 
     while (size > min) {
-      ctx.font = weight + ' ' + size + 'px ' + FONT_STACK;
+      ctx.font = weight + ' ' + size + 'px ' + face;
       var lines = MG.wrapText(ctx, slot.text, boxW);
       var lh = size * 1.22;
       var widest = 0;
@@ -152,7 +178,7 @@
       if (lines.length * lh <= boxH && widest <= boxW) return { size: size, lines: lines, lineHeight: lh };
       size -= 1;
     }
-    ctx.font = weight + ' ' + min + 'px ' + FONT_STACK;
+    ctx.font = weight + ' ' + min + 'px ' + face;
     return { size: min, lines: MG.wrapText(ctx, slot.text, boxW), lineHeight: min * 1.22 };
   }
 
@@ -309,14 +335,14 @@
     if (slot.autoFit) {
       fitted = fitFontSize(ctx, slot, boxW, boxH);
     } else {
-      ctx.font = weight + ' ' + slot.fontSize + 'px ' + FONT_STACK;
+      ctx.font = weight + ' ' + slot.fontSize + 'px ' + MG.fontStack(slot.font);
       fitted = {
         size: slot.fontSize,
         lines: MG.wrapText(ctx, slot.text, boxW),
         lineHeight: slot.fontSize * 1.22
       };
     }
-    ctx.font = weight + ' ' + fitted.size + 'px ' + FONT_STACK;
+    ctx.font = weight + ' ' + fitted.size + 'px ' + MG.fontStack(slot.font);
     ctx.textBaseline = 'middle';
     ctx.textAlign = slot.align || 'center';
 

@@ -20,6 +20,7 @@
   var els = {};
   var pendingImageSlotId = null;
   var textCommitTimer = 0;
+  var cutoutOnUpload = false;   // 업로드할 때 배경을 지울지
 
   /* ── 유틸 ──────────────────────────────────────────── */
   function $(sel) { return document.querySelector(sel); }
@@ -595,6 +596,8 @@
     });
     card.appendChild(ta);
 
+    card.appendChild(selectField('글꼴', slot, 'font', MG.fontList()));
+
     var row1 = el('div', 'row');
     row1.appendChild(selectField('말풍선', slot, 'bubble', [
       ['ellipse', '둥근 말풍선'], ['round', '사각 말풍선'],
@@ -660,6 +663,28 @@
     btns.append(pickBtn, clearBtn);
     picker.append(preview, btns);
     card.appendChild(picker);
+
+    // 배경 지우기(누끼)
+    var cut = el('div', 'cutout-row');
+    var chk = el('label', 'check');
+    var chkInput = el('input');
+    chkInput.type = 'checkbox';
+    chkInput.checked = cutoutOnUpload;
+    chkInput.addEventListener('change', function () {
+      cutoutOnUpload = chkInput.checked;
+      buildSlotList();
+    });
+    chk.appendChild(chkInput);
+    chk.appendChild(document.createTextNode(' 올릴 때 배경 지우기(누끼)'));
+    cut.appendChild(chk);
+
+    if (slot.src) {
+      var now = el('button', 'btn small ghost', '지금 배경 지우기');
+      now.addEventListener('click', function () { cutoutSlot(slot); });
+      cut.appendChild(now);
+    }
+    card.appendChild(cut);
+    card.appendChild(el('p', 'hint', '단색 배경 사진에 잘 맞습니다. 배경이 복잡하면 잘 지워지지 않아요.'));
 
     // 채우기 방식에 따라 아래 슬라이더 구성이 달라지므로 목록을 다시 그린다
     card.appendChild(selectField('채우기 방식', slot, 'fit', [
@@ -815,8 +840,39 @@
     els.imageInput.click();
   }
 
+  /** 이미 들어 있는 사진의 배경을 지운다 */
+  function cutoutSlot(slot) {
+    var img = MG.getCachedImage(slot.src);
+    if (!img) { toast('사진을 먼저 넣어주세요.'); return; }
+    toast('배경 지우는 중…');
+    setTimeout(function () {
+      try {
+        var res = MG.removeBackground(img);
+        if (res.removed < 0.01) { toast('지울 배경을 찾지 못했어요.'); return; }
+        slot.src = res.url;
+        MG.loadImage(res.url).then(function () {
+          buildSlotList();
+          MG.editor.requestDraw();
+          pushHistory();
+          toast('배경을 지웠어요 (' + Math.round(res.removed * 100) + '%).');
+        });
+      } catch (e) {
+        toast('배경을 지우지 못했습니다.');
+      }
+    }, 20);   // 토스트를 먼저 그리고 처리한다
+  }
+
   function applyImageFile(slot, file) {
     return fileToDataUrl(file, MAX_IMAGE_SIDE).then(function (res) {
+      if (!cutoutOnUpload) return res;
+      // 누끼는 원본 픽셀이 필요하므로 먼저 불러온 뒤 처리한다
+      return MG.loadImage(res.url).then(function (img) {
+        try {
+          var cut = MG.removeBackground(img);
+          return cut.removed >= 0.01 ? { url: cut.url } : res;
+        } catch (e) { return res; }
+      });
+    }).then(function (res) {
       slot.src = res.url;
       slot.scale = 1;
       slot.offsetX = 0;

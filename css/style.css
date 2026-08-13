@@ -555,3 +555,12 @@ h1, h2, h3 { margin: 0; }
   .topbar { flex-direction: column; align-items: stretch; }
   .topbar-actions { justify-content: space-between; }
 }
+
+/* 배경 지우기(누끼) 옵션 */
+.cutout-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}

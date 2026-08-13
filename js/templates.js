@@ -28,6 +28,7 @@
       name: '대사',
       x: 0, y: 0, w: 200, h: 90,
       text: '대사를 입력하세요',
+      font: 'gothic',
       fontSize: 26,
       autoFit: true,
       bold: true,
