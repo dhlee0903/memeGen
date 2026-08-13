@@ -79,11 +79,16 @@
         var ch = chars[i];
         var test = line + ch;
         if (line !== '' && ctx.measureText(test).width > maxWidth) {
-          // 영문 단어 중간이면 마지막 공백까지 되돌린다
           var breakAt = line.length;
-          if (isLatin(ch) && isLatin(line[line.length - 1])) {
-            var sp = line.lastIndexOf(' ');
-            if (sp > 0) breakAt = sp;
+          var sp = line.lastIndexOf(' ');
+          if (sp > 0) {
+            if (isLatin(ch) && isLatin(line[line.length - 1])) {
+              // 영문 단어는 중간에서 자르지 않는다
+              breakAt = sp;
+            } else if (ctx.measureText(line.slice(0, sp)).width >= maxWidth * 0.55) {
+              // 낱말 중간을 자르느니 공백에서 끊는다. 너무 짧아지면 그냥 자른다.
+              breakAt = sp;
+            }
           }
           var head = line.slice(0, breakAt).replace(/\s+$/, '');
           var tail = line.slice(breakAt).replace(/^\s+/, '');
@@ -117,6 +122,25 @@
     var size = slot.fontSize;
     var weight = slot.bold ? '700' : '400';
     var min = 8;
+
+    // 직접 넣은 줄바꿈이 있으면 그 구조를 지키는 크기를 먼저 찾는다.
+    // 너무 작아지면(요청 크기의 절반 미만) 포기하고 아래 자동 줄바꿈으로 넘어간다.
+    var paras = String(slot.text == null ? '' : slot.text).split('\n');
+    if (paras.length > 1) {
+      var floor = Math.max(min, Math.round(slot.fontSize * 0.5));
+      for (var ps = size; ps >= floor; ps--) {
+        ctx.font = weight + ' ' + ps + 'px ' + FONT_STACK;
+        var pWidest = 0;
+        for (var pi = 0; pi < paras.length; pi++) {
+          pWidest = Math.max(pWidest, ctx.measureText(paras[pi]).width);
+        }
+        var plh = ps * 1.22;
+        if (pWidest <= boxW && paras.length * plh <= boxH) {
+          return { size: ps, lines: paras, lineHeight: plh };
+        }
+      }
+    }
+
     while (size > min) {
       ctx.font = weight + ' ' + size + 'px ' + FONT_STACK;
       var lines = MG.wrapText(ctx, slot.text, boxW);
