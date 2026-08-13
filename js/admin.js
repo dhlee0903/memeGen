@@ -78,11 +78,17 @@
 
   /* ── GitHub API ────────────────────────────────────── */
   async function api(path, opts) {
-    var res = await fetch(API + path, Object.assign({}, opts, {
+    var res = await fetch(API + path, Object.assign({
+      // 캐시된 응답을 쓰면 오래된 sha 로 커밋하게 되어 409 가 난다
+      cache: 'no-store'
+    }, opts, {
       headers: Object.assign({
         'Authorization': 'Bearer ' + getToken(),
         'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28'
+        'X-GitHub-Api-Version': '2022-11-28',
+        // 인증된 GitHub API 응답은 max-age=60 으로 내려온다. 그대로 캐시되면
+        // 1분 동안 옛 sha 를 들고 커밋하게 된다.
+        'Cache-Control': 'no-cache'
       }, (opts && opts.headers) || {})
     }));
     return res;
@@ -103,29 +109,44 @@
     return r.json();
   }
 
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  /* 409 는 "보낸 sha 가 지금 파일과 다르다"는 뜻이다.
+   * 게시 한 번에 파일 두세 개를 연달아 커밋하는데, 앞 커밋으로 브랜치가
+   * 움직인 직후라 GitHub 이 잠깐 이전 상태를 돌려주는 일이 있다.
+   * 그럴 때는 sha 를 다시 읽어 재시도하면 된다. */
+  var RETRIES = 3;
+
   async function putFile(path, contentB64, message) {
-    var existing = await getFile(path);
-    var r = await api('/contents/' + path, {
-      method: 'PUT',
-      body: JSON.stringify({
-        message: message,
-        content: contentB64,
-        branch: BRANCH,
-        sha: existing ? existing.sha : undefined
-      })
-    });
-    if (!r.ok) throw new Error(await describe(r));
-    return r.json();
+    for (var attempt = 0; ; attempt++) {
+      var existing = await getFile(path);
+      var r = await api('/contents/' + path, {
+        method: 'PUT',
+        body: JSON.stringify({
+          message: message,
+          content: contentB64,
+          branch: BRANCH,
+          sha: existing ? existing.sha : undefined
+        })
+      });
+      if (r.ok) return r.json();
+      if (r.status !== 409 || attempt >= RETRIES - 1) throw new Error(await describe(r));
+      await wait(700 * (attempt + 1));
+    }
   }
 
   async function deleteFile(path, message) {
-    var existing = await getFile(path);
-    if (!existing) return;
-    var r = await api('/contents/' + path, {
-      method: 'DELETE',
-      body: JSON.stringify({ message: message, branch: BRANCH, sha: existing.sha })
-    });
-    if (!r.ok) throw new Error(await describe(r));
+    for (var attempt = 0; ; attempt++) {
+      var existing = await getFile(path);
+      if (!existing) return;
+      var r = await api('/contents/' + path, {
+        method: 'DELETE',
+        body: JSON.stringify({ message: message, branch: BRANCH, sha: existing.sha })
+      });
+      if (r.ok) return;
+      if (r.status !== 409 || attempt >= RETRIES - 1) throw new Error(await describe(r));
+      await wait(700 * (attempt + 1));
+    }
   }
 
   async function describe(res) {
@@ -136,7 +157,7 @@
     if (res.status === 401) return '토큰이 올바르지 않거나 만료됐습니다. "토큰" 버튼으로 다시 넣어주세요.' + tail;
     if (res.status === 403) return '쓰기 권한이 없습니다. 토큰의 Contents 를 Read and write 로 바꾸세요.' + tail;
     if (res.status === 404) return '이 토큰으로는 저장소가 보이지 않습니다. Repository access 에서 memeGen 을 골랐는지 확인하세요.' + tail;
-    if (res.status === 409) return '저장소가 그 사이 바뀌었습니다. 새로고침 후 다시 시도하세요.' + tail;
+    if (res.status === 409) return '저장소가 그 사이 바뀌어 몇 번 다시 시도했지만 안 됐습니다. 잠시 뒤 다시 눌러주세요.' + tail;
     return 'GitHub ' + res.status + tail;
   }
 
