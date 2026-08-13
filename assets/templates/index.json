@@ -5,6 +5,13 @@
       "name": "개노답 삼형제",
       "desc": "",
       "file": "assets/templates/user/user-msr74lho.json"
+    },
+    {
+      "id": "comic-page-8",
+      "name": "원본 만화 페이지",
+      "desc": "\"이거 다 똑같은 거 아니에요?\" 페이지 · 말풍선 12칸",
+      "file": "assets/templates/user/comic-page-8.json",
+      "overrides": true
     }
   ],
   "hidden": [
