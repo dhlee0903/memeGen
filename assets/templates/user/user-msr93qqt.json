@@ -8,7 +8,7 @@
   "panels": [],
   "slots": [
     {
-      "id": "i_msr8vpmk_438",
+      "id": "i_msr95dn4_460",
       "type": "image",
       "name": "배경 사진",
       "x": 0,
@@ -23,7 +23,7 @@
       "radius": 0
     },
     {
-      "id": "t_msr8vpnv_439",
+      "id": "t_msr95dn4_461",
       "type": "text",
       "name": "대사 1",
       "x": 597,
@@ -41,25 +41,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr8vpnv_440",
-      "type": "text",
-      "name": "대사 2",
-      "x": 863,
-      "y": 932,
-      "w": 61,
-      "h": 62,
-      "text": "",
-      "fontSize": 24,
-      "autoFit": true,
-      "bold": true,
-      "align": "center",
-      "color": "#111111",
-      "bubble": "none",
-      "tail": "none",
-      "stroke": false
-    },
-    {
-      "id": "t_msr8vs5m_441",
+      "id": "t_msr95dn4_463",
       "type": "text",
       "name": "대사 1",
       "x": 656,
@@ -77,7 +59,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr8vs5m_442",
+      "id": "t_msr95dn4_464",
       "type": "text",
       "name": "대사 2",
       "x": 608,
@@ -95,7 +77,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr90ik2_438",
+      "id": "t_msr95dn4_465",
       "type": "text",
       "name": "대사 2 복사",
       "x": 94,
@@ -113,7 +95,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr90lga_439",
+      "id": "t_msr95dn4_466",
       "type": "text",
       "name": "대사 1 복사",
       "x": 148,
@@ -131,7 +113,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr910is_440",
+      "id": "t_msr95dn4_467",
       "type": "text",
       "name": "대사 7",
       "x": 352,
@@ -149,7 +131,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr91pgz_441",
+      "id": "t_msr95dn4_468",
       "type": "text",
       "name": "대사 7 복사",
       "x": 374,
@@ -167,7 +149,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr92pya_442",
+      "id": "t_msr95dn4_469",
       "type": "text",
       "name": "대사 7 복사 복사",
       "x": 532,
@@ -185,7 +167,7 @@
       "stroke": false
     },
     {
-      "id": "t_msr93aje_443",
+      "id": "t_msr95dn4_470",
       "type": "text",
       "name": "대사 7 복사",
       "x": 512,
