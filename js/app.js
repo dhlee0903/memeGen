@@ -1023,9 +1023,20 @@
     });
 
     $('#btn-token').addEventListener('click', function () {
-      MG.admin.forgetToken();
-      toast('토큰을 지웠습니다. 다음 게시 때 다시 물어봅니다.');
-      updateAdminButtons();
+      if (!MG.admin.hasToken()) {
+        MG.admin.askToken().then(function () { updateAdminButtons(); });
+        return;
+      }
+      toast('토큰 확인 중…');
+      MG.admin.check().then(function (repo) {
+        toast('토큰 정상 — ' + repo + ' 에 쓸 수 있습니다.');
+      }).catch(function (err) {
+        toast(err.message || '토큰을 확인하지 못했습니다.');
+        if (confirm(err.message + '\n\n지금 토큰을 새로 넣을까요?')) {
+          MG.admin.forgetToken();
+          MG.admin.askToken().then(function () { updateAdminButtons(); });
+        }
+      });
     });
   }
 
@@ -1033,7 +1044,7 @@
     if (!MG.isAdmin || !MG.isAdmin() || !state.template) return;
     var published = !!(state.template.publishedId || state.template.published);
     $('#btn-unpublish').hidden = !published;
-    $('#btn-token').textContent = MG.admin.hasToken() ? '토큰 지우기' : '토큰 없음';
+    $('#btn-token').textContent = MG.admin.hasToken() ? '토큰 점검' : '토큰 입력';
   }
 
   function init() {

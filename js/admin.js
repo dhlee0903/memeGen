@@ -131,11 +131,35 @@
   async function describe(res) {
     var body = '';
     try { body = (await res.json()).message || ''; } catch (e) { /* noop */ }
-    if (res.status === 401) return '토큰이 올바르지 않습니다. 다시 입력해주세요.';
-    if (res.status === 403) return '권한이 없습니다. 토큰에 Contents 쓰기 권한이 있는지 확인하세요.';
-    if (res.status === 409) return '저장소가 그 사이 바뀌었습니다. 새로고침 후 다시 시도하세요.';
-    return 'GitHub ' + res.status + (body ? ' — ' + body : '');
+    // GitHub 이 알려주는 사유를 덮어쓰지 않는다. 원인 파악에 그게 제일 중요하다.
+    var tail = body ? ' (GitHub: ' + body + ')' : '';
+    if (res.status === 401) return '토큰이 올바르지 않거나 만료됐습니다. "토큰" 버튼으로 다시 넣어주세요.' + tail;
+    if (res.status === 403) return '쓰기 권한이 없습니다. 토큰의 Contents 를 Read and write 로 바꾸세요.' + tail;
+    if (res.status === 404) return '이 토큰으로는 저장소가 보이지 않습니다. Repository access 에서 memeGen 을 골랐는지 확인하세요.' + tail;
+    if (res.status === 409) return '저장소가 그 사이 바뀌었습니다. 새로고침 후 다시 시도하세요.' + tail;
+    return 'GitHub ' + res.status + tail;
   }
+
+  /**
+   * 게시 전에 토큰이 실제로 쓸 수 있는지 확인한다.
+   * 파일을 반쯤 쓰다 실패하는 것보다 먼저 걸러내는 편이 낫다.
+   */
+  async function checkAccess() {
+    var r = await api('');
+    if (!r.ok) throw new Error(await describe(r));
+
+    var repo = await r.json();
+    // fine-grained 토큰은 Repository access 를 "Public repositories (read-only)"
+    // 로 두면 읽기만 된다. 가장 흔한 실수라 여기서 잡는다.
+    if (repo.permissions && repo.permissions.push === false) {
+      throw new Error('이 토큰은 읽기 전용입니다. 토큰 설정에서 ' +
+        'Repository access → Only select repositories → memeGen 을 고르고, ' +
+        'Permissions → Contents 를 Read and write 로 바꾸세요.');
+    }
+    return repo;
+  }
+
+  MG.adminCheck = checkAccess;
 
   async function readManifest() {
     var f = await getFile('assets/templates/index.json');
@@ -173,6 +197,7 @@
      */
     publish: async function (tpl, title, desc) {
       if (!await ensureToken()) throw new Error('취소했습니다.');
+      await checkAccess();
 
       var id = tpl.publishedId || ('user-' + slugify(title, Date.now().toString(36)));
       var packed = MG.packAssets(tpl);
@@ -206,6 +231,16 @@
         b64utf8(JSON.stringify(manifest, null, 2)),
         'chore(template): 게시 취소 (' + id + ')');
       if (entry && entry.file) await deleteFile(entry.file, 'chore(template): ' + id + ' 삭제');
+    },
+
+    /** 토큰을 새로 입력받는다 */
+    askToken: async function () { return await askToken(); },
+
+    /** 지금 토큰으로 정말 쓸 수 있는지 확인 */
+    check: async function () {
+      if (!getToken()) throw new Error('토큰이 없습니다. 먼저 입력해주세요.');
+      var repo = await checkAccess();
+      return repo.full_name;
     },
 
     forgetToken: function () { setToken(''); },
