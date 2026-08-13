@@ -68,6 +68,15 @@ h1, h2, h3 { margin: 0; }
 .topbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .divider { width: 1px; height: 22px; background: var(--line); }
 
+/* 넓은 화면에서는 "더보기"가 없고 버튼이 그대로 늘어선다 */
+.more-wrap { display: contents; }
+.more-menu { display: contents; }
+#btn-more { display: none; }
+
+/* 좁은 화면 전용 요소 */
+.mobile-tabs { display: none; }
+.sheet-backdrop { display: none; }
+
 /* ── 버튼 / 입력 ───────────────────────────────────── */
 .btn {
   appearance: none;
@@ -542,18 +551,143 @@ h1, h2, h3 { margin: 0; }
   .gallery { grid-template-columns: 1fr; }
 }
 
+/* ── 좁은 화면 (모바일·태블릿 세로) ───────────────────
+ * 데스크톱은 3단 고정 레이아웃이지만, 좁은 화면에서 그대로 쌓으면
+ * 캔버스가 화면의 1/4로 밀려 편집이 불가능하다.
+ * 그래서 캔버스가 화면을 다 쓰고, 좌·우 패널은 아래에서 올라오는
+ * 시트로 바뀐다. */
 @media (max-width: 860px) {
   .layout {
     grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(320px, 60vh) auto;
-    overflow-y: auto;
+    grid-template-rows: 1fr;
   }
-  .panel { border: 0; border-bottom: 1px solid var(--line); }
-  .panel-body { max-height: 42vh; }
-  .gallery { grid-template-columns: 1fr 1fr; }
-  .panel-toggle { display: none; }
-  .topbar { flex-direction: column; align-items: stretch; }
-  .topbar-actions { justify-content: space-between; }
+
+  /* 상단바 — 한 줄로 */
+  .topbar { padding: 8px 10px; gap: 8px; }
+  .brand-mark { width: 32px; height: 32px; font-size: 13px; }
+  .brand h1 { font-size: 15px; }
+  .brand p { display: none; }
+  .topbar-actions { gap: 6px; flex-wrap: nowrap; }
+  .topbar-actions .btn { padding: 8px 10px; }
+  .topbar-actions .lbl { display: none; }
+  .topbar .divider { display: none; }
+
+  /* 보조 기능은 "더보기" 안으로 */
+  .more-wrap { display: block; position: relative; }
+  #btn-more { display: inline-flex; font-size: 16px; line-height: 1; padding: 7px 11px; }
+  .more-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px;
+    min-width: 160px;
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, .5);
+    z-index: 70;
+  }
+  .more-menu.open { display: flex; }
+  .more-menu .btn { text-align: left; width: 100%; }
+
+  /* 캔버스가 화면을 다 쓴다 */
+  .stage { grid-area: 1 / 1; padding-bottom: 62px; }   /* 아래 탭바 자리 */
+  .stage-toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 8px;
+    padding: 8px 10px;
+    scrollbar-width: none;
+  }
+  .stage-toolbar::-webkit-scrollbar { display: none; }
+  .tool-group { flex: 0 0 auto; }
+  .stage-hint { display: none; }
+  .canvas-wrap { padding: 10px; }
+
+  /* 좌·우 패널 = 아래에서 올라오는 시트 */
+  .panel {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: 78vh;
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, .5);
+    transform: translateY(102%);
+    transition: transform .22s ease;
+    z-index: 80;
+    visibility: hidden;
+  }
+  .panel.sheet-open { transform: none; visibility: visible; }
+  .panel-head { padding: 14px; }
+  .panel-head h2 { font-size: 15px; }
+  .panel-right .panel-head { flex-direction: row; }
+  .panel-body { padding: 14px 14px 24px; }
+
+  /* 시트 닫기 버튼 (데스크톱의 접기 버튼을 재사용) */
+  .panel-toggle { display: grid; transform: none !important; }
+  .panel-toggle::before { content: '✕'; }
+  .panel-toggle { font-size: 0; }
+  .panel-toggle::before { font-size: 13px; }
+
+  .sheet-backdrop {
+    display: block;   /* 기본값이 none 이라 여기서 켜 준다 */
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .5);
+    z-index: 75;
+  }
+
+  /* 아래 탭바 */
+  .mobile-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-panel);
+    border-top: 1px solid var(--line);
+    z-index: 78;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .mobile-tabs button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 8px 4px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+  }
+  .mobile-tabs button .ico { font-size: 18px; line-height: 1; }
+  .mobile-tabs button.active { color: var(--accent); }
+
+  /* 손가락으로 누를 수 있는 크기로 */
+  .gallery { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .tpl-tool { width: 32px; height: 32px; font-size: 15px; }
+  .icon-btn { width: 32px; height: 32px; }
+  .seg-btn { padding: 9px 0; }
+  .input, .textarea, select.input { font-size: 16px; padding: 9px 10px; }  /* 16px 미만이면 iOS가 확대한다 */
+  .btn { padding: 9px 13px; }
+  .btn.small { padding: 8px 11px; }
+  .toast { bottom: 76px; }
+}
+
+@media (max-width: 420px) {
+  .gallery { grid-template-columns: 1fr; }
+}
 }
 
 /* 배경 지우기(누끼) 옵션 */

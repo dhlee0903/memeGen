@@ -171,6 +171,7 @@
       function open() {
         var fresh = MG.buildTemplate(tpl.id);
         if (fresh) setTemplate(fresh);
+        closeSheet();   // 좁은 화면에서 고른 뒤 캔버스가 바로 보이게
       }
       card.addEventListener('click', open);
       card.addEventListener('keydown', function (e) {
@@ -1103,14 +1104,45 @@
       e.target.value = '';
     });
 
-    // 패널 접기
+    // 패널 접기 — 좁은 화면에서는 같은 버튼이 시트 닫기가 된다
     Array.prototype.forEach.call(document.querySelectorAll('.panel-toggle'), function (btn) {
       btn.addEventListener('click', function () {
+        if (isNarrow()) { closeSheet(); return; }
         var panel = document.getElementById(btn.dataset.target);
         panel.classList.toggle('collapsed');
         MG.editor.updateFit();
         MG.editor.requestDraw();
       });
+    });
+
+    // 좁은 화면: 아래 탭바로 패널을 연다
+    Array.prototype.forEach.call(document.querySelectorAll('#mobile-tabs button'), function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.dataset.sheet;
+        if (openSheetId === id) closeSheet(); else openSheet(id);
+      });
+    });
+    $('#sheet-backdrop').addEventListener('click', closeSheet);
+
+    // 상단바 "더보기"
+    var moreBtn = $('#btn-more');
+    var moreMenu = $('#more-menu');
+    moreBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var open = moreMenu.classList.toggle('open');
+      moreBtn.setAttribute('aria-expanded', String(open));
+    });
+    document.addEventListener('click', function (e) {
+      if (!moreMenu.classList.contains('open')) return;
+      if (moreMenu.contains(e.target) || e.target === moreBtn) return;
+      closeMore();
+    });
+    Array.prototype.forEach.call(moreMenu.querySelectorAll('button'), function (b) {
+      b.addEventListener('click', closeMore);
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { closeSheet(); closeMore(); }
     });
 
     // 전역 단축키
@@ -1154,6 +1186,7 @@
       requestImage: requestImage,
       applyImageFile: applyImageFile,
       focusText: function (slot) {
+        openSheet('panel-right');
         var card = els.slotList.querySelector('[data-slot-id="' + slot.id + '"]');
         if (!card) return;
         var ta = card.querySelector('[data-role="text"]');
@@ -1162,6 +1195,43 @@
       onZoom: function (z) { els.zoomLabel.textContent = Math.round(z * MG.editor.fitScale * 100) + '%'; },
       toast: toast
     });
+  }
+
+  /* ── 좁은 화면: 시트 ───────────────────────────────── */
+  var openSheetId = null;
+
+  function isNarrow() {
+    return window.matchMedia('(max-width: 860px)').matches;
+  }
+
+  function openSheet(id) {
+    if (!isNarrow()) return;
+    closeSheet();
+    var panel = document.getElementById(id);
+    if (!panel) return;
+    panel.classList.add('sheet-open');
+    $('#sheet-backdrop').hidden = false;
+    openSheetId = id;
+    Array.prototype.forEach.call(document.querySelectorAll('#mobile-tabs button'), function (b) {
+      b.classList.toggle('active', b.dataset.sheet === id);
+    });
+  }
+
+  function closeSheet() {
+    Array.prototype.forEach.call(document.querySelectorAll('.panel'), function (p) {
+      p.classList.remove('sheet-open');
+    });
+    $('#sheet-backdrop').hidden = true;
+    openSheetId = null;
+    Array.prototype.forEach.call(document.querySelectorAll('#mobile-tabs button'), function (b) {
+      b.classList.remove('active');
+    });
+  }
+
+  function closeMore() {
+    var m = $('#more-menu');
+    m.classList.remove('open');
+    $('#btn-more').setAttribute('aria-expanded', 'false');
   }
 
   /* ── 관리자 모드 (게시) ────────────────────────────── */

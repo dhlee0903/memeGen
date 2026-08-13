@@ -19,15 +19,21 @@
     </div>
   </div>
   <div class="topbar-actions">
-    <button id="btn-undo" class="btn ghost" title="되돌리기 (Ctrl+Z)">↶ 되돌리기</button>
-    <button id="btn-redo" class="btn ghost" title="다시 실행 (Ctrl+Shift+Z)">↷ 다시</button>
+    <button id="btn-undo" class="btn ghost" title="되돌리기 (Ctrl+Z)"><span class="ico">↶</span><span class="lbl"> 되돌리기</span></button>
+    <button id="btn-redo" class="btn ghost" title="다시 실행 (Ctrl+Shift+Z)"><span class="ico">↷</span><span class="lbl"> 다시</span></button>
     <span class="divider"></span>
-    <button id="btn-save" class="btn ghost">저장</button>
-    <button id="btn-load" class="btn ghost">불러오기</button>
-    <button id="btn-export-json" class="btn ghost">JSON 내보내기</button>
-    <button id="btn-import-json" class="btn ghost">JSON 가져오기</button>
+    <!-- 좁은 화면에서는 아래 넷이 "더보기" 안으로 접힌다 -->
+    <div class="more-wrap">
+      <button id="btn-more" class="btn ghost" aria-expanded="false" aria-controls="more-menu">⋯</button>
+      <div class="more-menu" id="more-menu">
+        <button id="btn-save" class="btn ghost">저장</button>
+        <button id="btn-load" class="btn ghost">불러오기</button>
+        <button id="btn-export-json" class="btn ghost">JSON 내보내기</button>
+        <button id="btn-import-json" class="btn ghost">JSON 가져오기</button>
+      </div>
+    </div>
     <span class="divider"></span>
-    <button id="btn-download" class="btn primary">PNG 다운로드</button>
+    <button id="btn-download" class="btn primary"><span class="lbl">PNG </span>다운로드</button>
   </div>
 </header>
 
@@ -110,6 +116,13 @@
   </aside>
 
 </main>
+
+<!-- 좁은 화면 전용: 패널을 아래에서 올라오는 시트로 연다 -->
+<div class="sheet-backdrop" id="sheet-backdrop" hidden></div>
+<nav class="mobile-tabs" id="mobile-tabs" aria-label="패널 열기">
+  <button type="button" data-sheet="panel-left"><span class="ico">▦</span>템플릿</button>
+  <button type="button" data-sheet="panel-right"><span class="ico">✎</span>칸 편집</button>
+</nav>
 
 <input type="file" id="hidden-image-input" accept="image/*" hidden />
 <input type="file" id="hidden-json-input" accept="application/json,.json" hidden />
