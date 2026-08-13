@@ -95,8 +95,22 @@
       }
       lines.push(line);
     }
-    return lines;
+    return fixLineStarts(lines);
   };
+
+  // 줄 첫머리에 오면 어색한 문자(닫는 문장부호)는 앞 줄로 끌어올린다
+  var NO_LINE_START = /[?!.,;:)\]}»”’、。，．！？」』]/;
+
+  function fixLineStarts(lines) {
+    for (var i = 1; i < lines.length; i++) {
+      while (lines[i] && NO_LINE_START.test(lines[i][0]) && lines[i - 1]) {
+        lines[i - 1] += lines[i][0];
+        lines[i] = lines[i].slice(1);
+      }
+      if (lines[i] === '') { lines.splice(i, 1); i--; }
+    }
+    return lines;
+  }
 
   /** 상자 안에 들어가는 폰트 크기를 찾는다 */
   function fitFontSize(ctx, slot, boxW, boxH) {

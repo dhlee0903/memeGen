@@ -85,7 +85,7 @@
 
     var blobs = connectedWhiteBlobs(white, w, h);
 
-    var minArea = total * 0.0012;   // 너무 작은 건 글자 사이 여백
+    var minArea = total * 0.002;    // 너무 작은 건 배경 소품·글자 사이 여백
     var maxArea = total * 0.07;     // 너무 큰 건 페이지 여백 / 칸 사이 공백
     var out = [];
 

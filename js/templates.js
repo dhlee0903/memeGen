@@ -203,7 +203,82 @@
     };
   }
 
-  /* ── 6) 빈 캔버스 ───────────────────────────────────── */
+  /* ── 6) 원본 만화 페이지 ────────────────────────────
+   * 페이지 그림 자체가 배경이다. 말풍선은 그림에 이미 그려져 있으므로
+   * 대사 칸은 bubble:'none' 으로 글자만 얹는다.
+   * 말풍선 좌표는 실제 페이지 이미지(622×959)에 자동 인식을 돌려 얻은 값이다.
+   */
+  // assets/templates/comic-8-page.js 가 먼저 로드되어 data URI 를 채워 둔다
+  function comicPageSrc() {
+    return (global.MG && global.MG.ASSETS && global.MG.ASSETS['comic-8-page']) || null;
+  }
+
+  function comicPage8() {
+    var W = 622, H = 959;
+
+    // 페이지에 그려진 빈 말풍선 위치 [x, y, w, h] — 읽는 순서
+    var bubbles = [
+      [9, 0, 96, 86], [347, 0, 112, 70],                          // 1행
+      [7, 214, 93, 130], [315, 214, 85, 112],                     // 2행
+      [51, 428, 83, 92], [153, 427, 88, 96], [246, 432, 63, 102], // 3행 왼쪽 칸
+      [407, 436, 89, 102], [508, 428, 98, 125],                   // 3행 오른쪽 칸
+      [112, 714, 88, 96], [212, 713, 79, 109],                    // 4행 왼쪽 칸
+      [457, 717, 161, 115]                                        // 4행 오른쪽 칸
+    ];
+
+    // 칸마다 사진을 얹을 기본 자리 (드래그로 옮길 수 있다)
+    var photos = [
+      [140, 55, 115, 130], [395, 55, 115, 130],
+      [140, 265, 115, 140], [395, 265, 115, 140],
+      [95, 530, 130, 145], [400, 530, 130, 145],
+      [95, 790, 130, 140], [410, 790, 130, 140]
+    ];
+
+    var slots = [
+      imageSlot({
+        name: '배경 (만화 페이지)',
+        x: 0, y: 0, w: W, h: H,
+        src: comicPageSrc(),
+        fit: 'fill'
+      })
+    ];
+
+    photos.forEach(function (p, i) {
+      slots.push(imageSlot({
+        name: (i + 1) + '컷 사진',
+        x: p[0], y: p[1], w: p[2], h: p[3]
+      }));
+    });
+
+    bubbles.forEach(function (bb, i) {
+      // 타원 안쪽에 글자가 들어가도록 살짝 줄인다
+      var pad = 0.12;
+      slots.push(textSlot({
+        name: '대사 ' + (i + 1),
+        x: Math.round(bb[0] + bb[2] * pad),
+        y: Math.round(bb[1] + bb[3] * pad),
+        w: Math.round(bb[2] * (1 - pad * 2)),
+        h: Math.round(bb[3] * (1 - pad * 2)),
+        text: '',
+        bubble: 'none',   // 말풍선은 배경 그림에 이미 있다
+        tail: 'none',
+        fontSize: 22,
+        autoFit: true
+      }));
+    });
+
+    return {
+      id: 'comic-page-8',
+      name: '원본 만화 페이지',
+      desc: '"이거 다 똑같은 거 아니에요?" 페이지 · 말풍선 12칸',
+      width: W, height: H,
+      background: '#ffffff',
+      panels: [],          // 칸 테두리는 그림에 이미 그려져 있다
+      slots: slots
+    };
+  }
+
+  /* ── 7) 빈 캔버스 ───────────────────────────────────── */
   function blank() {
     return {
       id: 'blank', name: '빈 캔버스', desc: '처음부터 자유롭게',
@@ -212,6 +287,7 @@
   }
 
   var BUILDERS = [
+    comicPage8,
     comicGrid('comic-8', '만화 8컷', '2열 × 4행 · "이거 다 똑같은 거 아니에요?"', 2, 4, 800, 1000,
       ['이건 A', '이건 B', '이건 C', '이건 D', '전부 똑같은 거 아니에요?', '이건 E', '이래서 알못들은!', '다르다니까!!']),
     comicGrid('comic-4', '만화 4컷', '2열 × 2행 기본 만화', 2, 2, 800, 620,

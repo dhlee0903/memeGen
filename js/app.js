@@ -126,6 +126,20 @@
   }
 
   /* ── 갤러리 ────────────────────────────────────────── */
+
+  /** 내장 템플릿이 쓰는 이미지를 미리 로드 (썸네일이 빈 칸으로 그려지지 않도록) */
+  function preloadBuiltinAssets() {
+    var srcs = {};
+    MG.listTemplates().forEach(function (tpl) {
+      tpl.slots.forEach(function (s) {
+        if (s.type === 'image' && s.src) srcs[s.src] = true;
+      });
+    });
+    return Promise.all(Object.keys(srcs).map(function (src) {
+      return MG.loadImage(src).catch(function () { return null; });
+    }));
+  }
+
   function buildGallery() {
     var list = MG.listTemplates();
     els.gallery.innerHTML = '';
@@ -890,11 +904,13 @@
 
   function init() {
     cacheEls();
-    buildGallery();
     bindUi();
     attachEditor();
     buildSavedList();
-    setTemplate(MG.buildTemplate('comic-8'), { silent: true });
+    preloadBuiltinAssets().then(function () {
+      buildGallery();
+      return setTemplate(MG.buildTemplate('comic-page-8'), { silent: true });
+    });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
