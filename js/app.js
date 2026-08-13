@@ -519,6 +519,72 @@
     pushHistory();
   }
 
+  /* ── 말풍선 자동 찾기 ──────────────────────────────── */
+
+  /** 캔버스 대부분을 덮는 사진 칸 = 배경 */
+  function findBackgroundSlot() {
+    var tpl = state.template;
+    var canvasArea = tpl.width * tpl.height;
+    var best = null;
+    tpl.slots.forEach(function (s) {
+      if (s.type !== 'image' || !s.src) return;
+      var ratio = (s.w * s.h) / canvasArea;
+      if (ratio < 0.5) return;
+      if (!best || s.w * s.h > best.w * best.h) best = s;
+    });
+    return best;
+  }
+
+  /**
+   * @param {boolean} afterUpload 배경 업로드 직후 자동 실행인지(안내 문구가 달라진다)
+   * @returns {number} 만들어진 대사 칸 수
+   */
+  function detectBubbles(afterUpload) {
+    var bg = findBackgroundSlot();
+    if (!bg) {
+      toast('먼저 만화 페이지를 배경 사진으로 올려주세요.');
+      return 0;
+    }
+    var img = MG.getCachedImage(bg.src);
+    if (!img) { toast('배경 이미지를 아직 불러오는 중입니다.'); return 0; }
+
+    var found = MG.detectBubbles(img);
+    if (!found.length) {
+      toast(afterUpload
+        ? '배경을 올렸어요. "＋ 대사 칸"으로 말풍선을 추가해보세요.'
+        : '말풍선을 찾지 못했어요. 대사 칸을 직접 추가해주세요.');
+      return 0;
+    }
+
+    // 정규화 좌표를 배경 칸 위치에 맞춰 되돌린다
+    found.forEach(function (r, i) {
+      var pad = 0.1;   // 타원 안쪽에 글자가 들어가도록 살짝 줄인다
+      var x = bg.x + r.x * bg.w;
+      var y = bg.y + r.y * bg.h;
+      var w = r.w * bg.w;
+      var h = r.h * bg.h;
+      state.template.slots.push(MG.textSlot({
+        name: '대사 ' + (i + 1),
+        x: Math.round(x + w * pad),
+        y: Math.round(y + h * pad),
+        w: Math.round(w * (1 - pad * 2)),
+        h: Math.round(h * (1 - pad * 2)),
+        text: '',
+        bubble: 'none',      // 말풍선은 이미 그림에 그려져 있다
+        tail: 'none',
+        fontSize: 24,
+        autoFit: true
+      }));
+    });
+
+    state.selectedId = null;
+    buildSlotList();
+    MG.editor.requestDraw();
+    pushHistory();
+    toast('말풍선 ' + found.length + '개를 찾았어요. 오른쪽에서 대사를 채워보세요.');
+    return found.length;
+  }
+
   function countType(type) {
     return state.template.slots.filter(function (s) { return s.type === type; }).length;
   }
@@ -707,6 +773,7 @@
   function bindUi() {
     $('#btn-add-text').addEventListener('click', function () { addSlot('text'); });
     $('#btn-add-image').addEventListener('click', function () { addSlot('image'); });
+    $('#btn-detect').addEventListener('click', detectBubbles);
 
     $('#btn-zoom-in').addEventListener('click', function () { MG.editor.setZoom(MG.editor.zoom * 1.2); });
     $('#btn-zoom-out').addEventListener('click', function () { MG.editor.setZoom(MG.editor.zoom / 1.2); });
@@ -754,7 +821,8 @@
         state.title = '내 밈';
         return setTemplate(tpl);
       }).then(function () {
-        toast('배경을 올렸어요. "＋ 대사 칸"으로 말풍선을 추가해보세요.');
+        // 만화 페이지라면 빈 말풍선을 바로 찾아 대사 칸으로 만들어 준다
+        detectBubbles(true);
       }).catch(function (err) { toast(err.message || '이미지를 불러오지 못했습니다.'); });
       e.target.value = '';
     });

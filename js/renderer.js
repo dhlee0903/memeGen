@@ -199,12 +199,13 @@
     ctx.save();
     if (slot.radius > 0) roundRectPath(ctx, slot.x, slot.y, slot.w, slot.h, slot.radius);
     else { ctx.beginPath(); ctx.rect(slot.x, slot.y, slot.w, slot.h); }
-    ctx.fillStyle = '#e9edf2';
+    // 배경 그림 위에 놓인 빈 사진 칸도 아래가 비쳐 보이도록 반투명하게 그린다
+    ctx.fillStyle = 'rgba(233,237,242,.72)';
     ctx.fill();
     ctx.clip();
 
     // 대각 스트라이프
-    ctx.strokeStyle = '#d3dae3';
+    ctx.strokeStyle = 'rgba(180,193,209,.55)';
     ctx.lineWidth = 8;
     var step = 28;
     for (var i = -slot.h; i < slot.w; i += step) {
