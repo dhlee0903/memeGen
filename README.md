@@ -145,6 +145,8 @@ GitHub → Settings → Developer settings → **Fine-grained tokens** 에서 �
 | Ctrl/Cmd + V | 칸 붙여넣기 (클립보드에 사진이 있으면 사진 칸에 넣음) |
 | Shift + 드래그 | 한 축으로만 이동 |
 | Shift + 크기조정 | 가로세로 비율 유지 |
+| Alt + 드래그 | 복사본을 만들어 끌기 |
+| Shift + Alt + 드래그 | 복사하면서 한 축으로만 |
 | 방향키 | 선택한 칸 1px 이동 (Shift: 10px) |
 | Delete / Backspace | 선택한 칸 삭제 |
 | Esc | 선택 해제 |
@@ -163,6 +165,12 @@ GitHub → Settings → Developer settings → **Fine-grained tokens** 에서 �
 
 입력칸에 커서가 있거나 글자를 선택한 상태에서는 가로채지 않으므로, 대사를 복사·붙여넣는
 평소 동작은 그대로입니다.
+
+캔버스에서 **`Alt` 를 누른 채 끌면** 복사본이 생기고 그 복사본이 끌려옵니다. 원본은 제자리에
+남습니다. `Shift` 를 같이 누르면 한 축으로만 움직입니다. 되돌리기 한 번이면 복사까지 취소됩니다.
+
+리눅스 데스크톱 환경에 따라 `Alt` + 드래그를 창 이동으로 가로채는 경우가 있습니다.
+그럴 때는 `Ctrl+C` / `Ctrl+V` 를 쓰세요.
 
 ## 글꼴
 

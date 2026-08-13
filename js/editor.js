@@ -163,7 +163,16 @@
       };
     } else {
       var slot = this.hitSlot(pt);
-      this.hooks.setSelectedId(slot ? slot.id : null);
+
+      // Alt 를 누른 채 끌면 복사본을 만들어 그것을 끈다.
+      // 복사본은 원래 자리에 놓이므로 끌어낸 만큼만 떨어진다.
+      if (slot && e.altKey && this.hooks.duplicateForDrag) {
+        var copy = this.hooks.duplicateForDrag(slot);
+        if (copy) slot = copy;
+      } else {
+        this.hooks.setSelectedId(slot ? slot.id : null);
+      }
+
       if (slot) {
         this.drag = {
           mode: 'move', start: pt,

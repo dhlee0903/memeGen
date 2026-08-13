@@ -1305,6 +1305,18 @@
         });
       },
       commitChange: pushHistory,
+      /* Alt + 드래그 — 복사본을 만들어 돌려준다.
+       * 히스토리는 끌기가 끝날 때 commitChange 가 한 번만 쌓는다.
+       * 여기서 pushHistory 하면 되돌리기가 두 번 걸린다. */
+      duplicateForDrag: function (slot) {
+        var copy = clone(slot);
+        copy.id = MG.uid(copy.type === 'text' ? 't' : 'i');
+        copy.name = (copy.name || '칸') + ' 복사';
+        state.template.slots.push(copy);
+        state.selectedId = copy.id;
+        buildSlotList();
+        return copy;
+      },
       deleteSlot: deleteSlot,
       requestImage: requestImage,
       applyImageFile: applyImageFile,
