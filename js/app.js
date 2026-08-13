@@ -644,7 +644,25 @@
     return String(s || 'meme').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 60) || 'meme';
   }
 
+  /** 호스트가 파일 저장 API를 제공하는 환경(브라우저 다운로드가 막힌 샌드박스 등) */
+  function hostSave(blob, filename) {
+    var host = window.claude;
+    if (!host || !host.downloads || typeof host.downloads.save !== 'function') return false;
+    host.downloads.save({ filename: filename, data: blob }).then(function () {
+      toast('저장했어요: ' + filename);
+    }).catch(function (err) {
+      var code = err && err.code;
+      if (code === 'declined') return;                       // 사용자가 취소한 경우
+      if (code === 'rate_limited') toast('잠시 후 다시 시도해주세요.');
+      else if (code === 'too_large') toast('파일이 너무 큽니다. 캔버스 크기를 줄여보세요.');
+      else toast('저장하지 못했습니다: ' + ((err && err.message) || code || '알 수 없는 오류'));
+    });
+    return true;
+  }
+
   function downloadBlob(blob, filename) {
+    if (hostSave(blob, filename)) return;
+
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
@@ -657,23 +675,16 @@
       if (a.parentNode) a.parentNode.removeChild(a);
       URL.revokeObjectURL(url);
     }, 1500);
+    toast('저장했어요: ' + filename);
   }
 
   function downloadPng() {
     var canvas = MG.renderToCanvas(state.template, 2);
     var name = safeFileName(state.title) + '.png';
-    if (canvas.toBlob) {
-      canvas.toBlob(function (blob) {
-        if (!blob) { toast('이미지를 만들지 못했습니다.'); return; }
-        downloadBlob(blob, name);
-        toast('PNG로 저장했어요.');
-      }, 'image/png');
-    } else {
-      var a = document.createElement('a');
-      a.href = canvas.toDataURL('image/png');
-      a.download = name;
-      a.click();
-    }
+    canvas.toBlob(function (blob) {
+      if (!blob) { toast('이미지를 만들지 못했습니다.'); return; }
+      downloadBlob(blob, name);
+    }, 'image/png');
   }
 
   /* ── 초기화 ────────────────────────────────────────── */
