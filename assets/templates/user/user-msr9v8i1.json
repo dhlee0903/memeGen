@@ -8,7 +8,7 @@
   "panels": [],
   "slots": [
     {
-      "id": "i_msrle4m7_416",
+      "id": "i_msrlqnb0_482",
       "type": "image",
       "name": "배경 사진",
       "x": 0,
@@ -23,7 +23,7 @@
       "radius": 0
     },
     {
-      "id": "t_msrle4m7_417",
+      "id": "t_msrlqnb1_483",
       "type": "text",
       "name": "대사 1",
       "x": 6,
@@ -41,7 +41,7 @@
       "stroke": false
     },
     {
-      "id": "t_msrle4m7_418",
+      "id": "t_msrlqnb1_484",
       "type": "text",
       "name": "대사 2",
       "x": 136,
@@ -59,7 +59,7 @@
       "stroke": false
     },
     {
-      "id": "t_msrle4m7_419",
+      "id": "t_msrlqnb1_485",
       "type": "text",
       "name": "대사 5",
       "x": 9,
@@ -78,7 +78,7 @@
       "stroke": false
     },
     {
-      "id": "t_msrle4m7_420",
+      "id": "t_msrlqnb1_486",
       "type": "text",
       "name": "대사 1 복사",
       "x": 4,
@@ -96,7 +96,7 @@
       "stroke": false
     },
     {
-      "id": "t_msrle4m7_421",
+      "id": "t_msrlqnb1_487",
       "type": "text",
       "name": "대사 2 복사",
       "x": 134,
@@ -114,7 +114,7 @@
       "stroke": false
     },
     {
-      "id": "t_msrle4m7_422",
+      "id": "t_msrlqnb1_488",
       "type": "text",
       "name": "대사 5 복사",
       "x": 12,
@@ -133,7 +133,7 @@
       "stroke": false
     },
     {
-      "id": "t_msrlfc4t_423",
+      "id": "t_msrlqnb1_489",
       "type": "text",
       "name": "대사 2 복사",
       "x": 242,
@@ -151,7 +151,7 @@
       "stroke": false
     },
     {
-      "id": "t_msrlgiy9_424",
+      "id": "t_msrlqnb1_490",
       "type": "text",
       "name": "대사 2 복사 복사",
       "x": 242,
@@ -169,7 +169,7 @@
       "stroke": false
     },
     {
-      "id": "t_msrlh6f0_425",
+      "id": "t_msrlqnb1_491",
       "type": "text",
       "name": "대사 2 복사 복사 복사",
       "x": 241,
@@ -187,7 +187,7 @@
       "stroke": false
     },
     {
-      "id": "t_msrlhq0h_426",
+      "id": "t_msrlqnb1_492",
       "type": "text",
       "name": "대사 2 복사 복사 복사 복사",
       "x": 243,
@@ -205,7 +205,7 @@
       "stroke": false
     },
     {
-      "id": "t_msrligdy_427",
+      "id": "t_msrlqnb1_493",
       "type": "text",
       "name": "대사 2 복사 복사 복사 복사 복사",
       "x": 243,
@@ -218,6 +218,96 @@
       "bold": true,
       "align": "left",
       "color": "#da0b0b",
+      "bubble": "none",
+      "tail": "none",
+      "stroke": false
+    },
+    {
+      "id": "t_msrlqugv_495",
+      "type": "text",
+      "name": "대사 2 복사 복사",
+      "x": 244,
+      "y": 310,
+      "w": 245,
+      "h": 24,
+      "text": "- 오래 기억에 남음",
+      "fontSize": 17,
+      "autoFit": false,
+      "bold": true,
+      "align": "left",
+      "color": "#078b3d",
+      "bubble": "none",
+      "tail": "none",
+      "stroke": false
+    },
+    {
+      "id": "t_msrltv1w_496",
+      "type": "text",
+      "name": "대사 2 복사 복사 복사",
+      "x": 244,
+      "y": 394,
+      "w": 245,
+      "h": 24,
+      "text": "- 간단하고 사전 지식이 필요X",
+      "fontSize": 17,
+      "autoFit": false,
+      "bold": true,
+      "align": "left",
+      "color": "#078b3d",
+      "bubble": "none",
+      "tail": "none",
+      "stroke": false
+    },
+    {
+      "id": "t_msrlud2o_497",
+      "type": "text",
+      "name": "대사 2 복사 복사 복사 복사",
+      "x": 243,
+      "y": 353,
+      "w": 245,
+      "h": 24,
+      "text": "- 팩트임",
+      "fontSize": 17,
+      "autoFit": false,
+      "bold": true,
+      "align": "left",
+      "color": "#078b3d",
+      "bubble": "none",
+      "tail": "none",
+      "stroke": false
+    },
+    {
+      "id": "t_msrlvinl_498",
+      "type": "text",
+      "name": "대사 2 복사 복사 복사 복사",
+      "x": 242,
+      "y": 436,
+      "w": 245,
+      "h": 24,
+      "text": "- 논쟁에서 밀릴 확률 0에 수렴함",
+      "fontSize": 17,
+      "autoFit": false,
+      "bold": true,
+      "align": "left",
+      "color": "#078b3d",
+      "bubble": "none",
+      "tail": "none",
+      "stroke": false
+    },
+    {
+      "id": "t_msrlwabq_499",
+      "type": "text",
+      "name": "대사 2 복사 복사 복사 복사 복사",
+      "x": 243,
+      "y": 269,
+      "w": 245,
+      "h": 24,
+      "text": "- 금방 끝남",
+      "fontSize": 17,
+      "autoFit": false,
+      "bold": true,
+      "align": "left",
+      "color": "#078b3d",
       "bubble": "none",
       "tail": "none",
       "stroke": false
