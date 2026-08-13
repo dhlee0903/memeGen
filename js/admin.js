@@ -162,19 +162,40 @@
   MG.adminCheck = checkAccess;
 
   var MANIFEST_PATH = 'assets/templates/index.json';
+  var USER_DIR = 'assets/templates/user/';
+  var TRASH_DIR = 'assets/templates/trash/';
 
   async function readManifest() {
     var f = await getFile(MANIFEST_PATH);
-    if (!f) return { templates: [], hidden: [] };
-    try {
-      var text = new TextDecoder().decode(Uint8Array.from(atob(f.content.replace(/\n/g, '')), function (c) { return c.charCodeAt(0); }));
-      var data = JSON.parse(text);
-      if (!Array.isArray(data.templates)) data.templates = [];
-      if (!Array.isArray(data.hidden)) data.hidden = [];
-      return data;
-    } catch (e) {
-      return { templates: [], hidden: [] };
+    var data = { templates: [], trash: [] };
+    if (f) {
+      try {
+        var text = new TextDecoder().decode(Uint8Array.from(atob(f.content.replace(/\n/g, '')), function (c) { return c.charCodeAt(0); }));
+        data = JSON.parse(text);
+      } catch (e) { /* 깨졌으면 빈 것으로 시작 */ }
     }
+    if (!Array.isArray(data.templates)) data.templates = [];
+    if (!Array.isArray(data.trash)) data.trash = [];
+
+    // 예전 형식(hidden: [id])을 휴지통으로 옮긴다
+    if (Array.isArray(data.hidden)) {
+      data.hidden.forEach(function (id) {
+        if (!data.trash.some(function (t) { return t.id === id; })) {
+          data.trash.push({ id: id, name: id, builtin: true });
+        }
+      });
+    }
+    delete data.hidden;
+    return data;
+  }
+
+  /** GitHub API 에는 이동이 없다. 읽어서 새 경로에 쓰고 원래 것을 지운다. */
+  async function moveFile(from, to, message) {
+    var f = await getFile(from);
+    if (!f) return false;
+    await putFile(to, f.content.replace(/\n/g, ''), message);
+    await deleteFile(from, message);
+    return true;
   }
 
   function writeManifest(manifest, message) {
@@ -225,7 +246,7 @@
       delete packed.published;
 
       // 배경이 내장 이미지가 아니면(직접 올린 그림) 그대로 data URI 로 담긴다.
-      var path = 'assets/templates/user/' + id + '.json';
+      var path = USER_DIR + id + '.json';
       await putFile(path, b64utf8(JSON.stringify(packed, null, 2)),
         (builtin ? 'feat(template): ' + title + ' 수정' : 'feat(template): ' + title + ' 게시'));
 
@@ -234,47 +255,96 @@
       if (builtin) entry.overrides = true;
       var i = manifest.templates.findIndex(function (t) { return t.id === id; });
       if (i === -1) manifest.templates.push(entry); else manifest.templates[i] = entry;
-      // 숨겨둔 것을 다시 게시하면 숨김을 푼다
-      manifest.hidden = manifest.hidden.filter(function (h) { return h !== id; });
+      // 휴지통에 있던 것을 다시 게시하면 휴지통에서 뺀다
+      manifest.trash = manifest.trash.filter(function (t) { return t.id !== id; });
       await writeManifest(manifest, 'chore(template): 게시 목록 갱신 (' + title + ')');
 
-      MG.unhideTemplate(id);
+      MG.removeFromTrash(id);
       return id;
     },
 
-    /** 게시본(또는 덮어쓴 버전)을 지운다. 내장 템플릿이면 원본으로 되돌아간다. */
-    unpublish: async function (id) {
+    /** 수정(덮어쓰기)만 취소하고 원래 내장 템플릿으로 되돌린다 */
+    revert: async function (id) {
       if (!await ensureToken()) throw new Error('취소했습니다.');
       await checkAccess();
       var manifest = await readManifest();
       var entry = manifest.templates.filter(function (t) { return t.id === id; })[0];
       manifest.templates = manifest.templates.filter(function (t) { return t.id !== id; });
-      await writeManifest(manifest, 'chore(template): ' + id + ' 게시 취소');
-      if (entry && entry.file) await deleteFile(entry.file, 'chore(template): ' + id + ' 삭제');
-    },
-
-    /** 내장 템플릿을 갤러리에서 감춘다(코드에 있어 지울 수는 없다) */
-    hide: async function (id) {
-      if (!await ensureToken()) throw new Error('취소했습니다.');
-      await checkAccess();
-      var manifest = await readManifest();
-
-      // 덮어쓴 버전이 있으면 같이 정리한다
-      var entry = manifest.templates.filter(function (t) { return t.id === id; })[0];
-      manifest.templates = manifest.templates.filter(function (t) { return t.id !== id; });
-      if (manifest.hidden.indexOf(id) === -1) manifest.hidden.push(id);
-
-      await writeManifest(manifest, 'chore(template): ' + id + ' 숨김');
+      await writeManifest(manifest, 'chore(template): ' + id + ' 수정 취소');
       if (entry && entry.file) await deleteFile(entry.file, 'chore(template): ' + id + ' 덮어쓴 버전 삭제');
     },
 
-    /** 숨긴 내장 템플릿을 다시 보이게 한다 */
-    unhide: async function (id) {
+    /**
+     * 템플릿을 휴지통으로 옮긴다.
+     * 게시본은 파일을 trash 폴더로 옮기고, 내장 템플릿은 기록만 남긴다.
+     * @returns {object} 휴지통 항목
+     */
+    trash: async function (id, meta) {
       if (!await ensureToken()) throw new Error('취소했습니다.');
       await checkAccess();
+      meta = meta || {};
+
       var manifest = await readManifest();
-      manifest.hidden = manifest.hidden.filter(function (h) { return h !== id; });
-      await writeManifest(manifest, 'chore(template): ' + id + ' 복구');
+      var entry = manifest.templates.filter(function (t) { return t.id === id; })[0];
+      manifest.templates = manifest.templates.filter(function (t) { return t.id !== id; });
+
+      var rec = {
+        id: id,
+        name: meta.name || (entry && entry.name) || id,
+        desc: meta.desc || (entry && entry.desc) || '',
+        builtin: !!meta.builtin,
+        deletedAt: new Date().toISOString()
+      };
+
+      if (entry && entry.file) {
+        var to = TRASH_DIR + id + '.json';
+        await moveFile(entry.file, to, 'chore(template): ' + rec.name + ' 휴지통으로');
+        rec.file = to;
+        if (entry.overrides) rec.overrides = true;
+      }
+
+      manifest.trash = manifest.trash.filter(function (t) { return t.id !== id; });
+      manifest.trash.push(rec);
+      await writeManifest(manifest, 'chore(template): ' + rec.name + ' 휴지통으로');
+
+      MG.addToTrash(rec);
+      return rec;
+    },
+
+    /** 휴지통에서 되살린다 */
+    restore: async function (id) {
+      if (!await ensureToken()) throw new Error('취소했습니다.');
+      await checkAccess();
+
+      var manifest = await readManifest();
+      var rec = manifest.trash.filter(function (t) { return t.id === id; })[0];
+      if (!rec) throw new Error('휴지통에 없는 템플릿입니다.');
+      manifest.trash = manifest.trash.filter(function (t) { return t.id !== id; });
+
+      if (rec.file) {
+        var to = USER_DIR + id + '.json';
+        await moveFile(rec.file, to, 'chore(template): ' + rec.name + ' 복원');
+        var entry = { id: id, name: rec.name, desc: rec.desc || '', file: to };
+        if (rec.overrides) entry.overrides = true;
+        manifest.templates.push(entry);
+      }
+
+      await writeManifest(manifest, 'chore(template): ' + rec.name + ' 복원');
+      MG.removeFromTrash(id);
+      return rec;
+    },
+
+    /** 휴지통에서 완전히 지운다 (내장 템플릿에는 쓰지 않는다) */
+    purge: async function (id) {
+      if (!await ensureToken()) throw new Error('취소했습니다.');
+      await checkAccess();
+
+      var manifest = await readManifest();
+      var rec = manifest.trash.filter(function (t) { return t.id === id; })[0];
+      manifest.trash = manifest.trash.filter(function (t) { return t.id !== id; });
+      await writeManifest(manifest, 'chore(template): ' + ((rec && rec.name) || id) + ' 완전 삭제');
+      if (rec && rec.file) await deleteFile(rec.file, 'chore(template): ' + id + ' 파일 삭제');
+      MG.removeFromTrash(id);
     },
 
     /** 토큰을 새로 입력받는다 */

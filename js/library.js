@@ -58,7 +58,15 @@
     if (location.protocol === 'file:') return Promise.resolve([]);
 
     return getJson(MG.LIBRARY.manifest).then(function (data) {
-      MG.setHiddenIds((data && data.hidden) || []);
+      var trash = ((data && data.trash) || []).slice();
+      // 예전 형식(hidden: [id]) 호환
+      ((data && data.hidden) || []).forEach(function (id) {
+        if (!trash.some(function (t) { return t.id === id; })) {
+          trash.push({ id: id, name: id, builtin: true });
+        }
+      });
+      MG.setTrash(trash);
+
       var list = (data && data.templates) || [];
       return Promise.all(list.map(function (entry) {
         var url = entry.file || (MG.LIBRARY.dir + entry.id + '.json');

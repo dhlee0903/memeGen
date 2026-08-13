@@ -380,7 +380,7 @@
    * 내장 템플릿은 코드에 있어 파일을 지울 수 없으므로, 삭제는 "숨김"으로
    * 수정은 "같은 id 로 덮어쓰기"로 처리한다. */
   var PUBLISHED = [];
-  var HIDDEN = {};
+  var TRASH = [];   // [{id, name, desc, builtin, file, deletedAt}]
 
   var BUILTIN_IDS = {};
   BUILDERS.forEach(function (b) { BUILTIN_IDS[b().id] = true; });
@@ -407,13 +407,21 @@
     PUBLISHED = PUBLISHED.filter(function (t) { return t.id !== id; });
   };
 
-  global.MG.setHiddenIds = function (ids) {
-    HIDDEN = {};
-    (ids || []).forEach(function (id) { HIDDEN[id] = true; });
+  /* ── 휴지통 ────────────────────────────────────────
+   * 지운 템플릿은 여기로 간다. 내장 템플릿은 코드에 있어 파일을 지울 수
+   * 없으므로, 휴지통에 기록만 남기고 갤러리에서 빼는 식으로 처리한다. */
+  global.MG.setTrash = function (entries) { TRASH = (entries || []).slice(); };
+  global.MG.trashList = function () { return TRASH.slice(); };
+  global.MG.isTrashed = function (id) {
+    return TRASH.some(function (t) { return t.id === id; });
   };
-  global.MG.hiddenIds = function () { return Object.keys(HIDDEN); };
-  global.MG.hideTemplate = function (id) { HIDDEN[id] = true; };
-  global.MG.unhideTemplate = function (id) { delete HIDDEN[id]; };
+  global.MG.addToTrash = function (rec) {
+    TRASH = TRASH.filter(function (t) { return t.id !== rec.id; });
+    TRASH.push(rec);
+  };
+  global.MG.removeFromTrash = function (id) {
+    TRASH = TRASH.filter(function (t) { return t.id !== id; });
+  };
 
   function overrideOf(id) {
     for (var i = 0; i < PUBLISHED.length; i++) if (PUBLISHED[i].id === id) return PUBLISHED[i];
@@ -435,27 +443,24 @@
    * 갤러리 표시용 목록.
    * 새로 게시한 것이 앞에 오고, 내장 템플릿은 원래 순서를 지킨다.
    * 덮어쓴 내장 템플릿은 그 자리에서 덮어쓴 버전으로 바뀐다.
-   * @param {boolean} includeHidden 숨긴 것까지 포함(관리자용)
+   * 휴지통에 있는 것은 빠진다(관리자에게도 — 휴지통 목록에서 따로 보여준다).
    */
-  global.MG.listTemplates = function (includeHidden) {
+  global.MG.listTemplates = function () {
     var out = [];
 
     PUBLISHED.forEach(function (t) {
       if (BUILTIN_IDS[t.id]) return;            // 내장 덮어쓰기는 아래에서 제자리에 넣는다
-      if (!includeHidden && HIDDEN[t.id]) return;
-      var c = reid(t);
-      c.hidden = !!HIDDEN[t.id];
-      out.push(c);
+      if (global.MG.isTrashed(t.id)) return;
+      out.push(reid(t));
     });
 
     BUILDERS.forEach(function (b) {
       var base = b();
-      if (!includeHidden && HIDDEN[base.id]) return;
+      if (global.MG.isTrashed(base.id)) return;
       var over = overrideOf(base.id);
       var t = over ? reid(over) : base;
       t.builtin = true;
       t.overridden = !!over;
-      t.hidden = !!HIDDEN[base.id];
       out.push(t);
     });
 

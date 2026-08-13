@@ -252,8 +252,23 @@ h1, h2, h3 { margin: 0; }
   border: 1px solid var(--line);
   color: var(--text-dim);
 }
-.tpl-card.is-hidden-tpl .tpl-thumb,
-.tpl-card.is-hidden-tpl .tpl-meta { opacity: .38; }
+/* 휴지통 목록 */
+.trash-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 2px;
+}
+.trash-info strong {
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trash-info span { font-size: 11px; color: var(--text-dim); }
+#trash-section h3 { display: flex; align-items: center; gap: 6px; }
 
 .tpl-thumb {
   aspect-ratio: 1 / 1;
