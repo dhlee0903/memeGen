@@ -1,0 +1,823 @@
+/* 밈 생성기 — 앱 글루 코드
+ * 상태 관리 / 템플릿 갤러리 / 속성 패널 / 저장·불러오기 / 내보내기
+ */
+(function (global) {
+  'use strict';
+
+  var MG = (global.MG = global.MG || {});
+
+  var STORAGE_KEY = 'memegen.projects.v1';
+  var MAX_IMAGE_SIDE = 1600;   // 업로드 이미지 다운스케일 기준
+  var HISTORY_LIMIT = 30;
+
+  var state = {
+    template: null,
+    selectedId: null,
+    title: '내 밈'
+  };
+
+  var history = { stack: [], index: -1 };
+  var els = {};
+  var pendingImageSlotId = null;
+  var textCommitTimer = 0;
+
+  /* ── 유틸 ──────────────────────────────────────────── */
+  function $(sel) { return document.querySelector(sel); }
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+  var toastTimer = 0;
+  function toast(msg) {
+    var t = els.toast;
+    t.textContent = msg;
+    t.hidden = false;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () {
+      t.classList.remove('show');
+      setTimeout(function () { t.hidden = true; }, 250);
+    }, 2200);
+  }
+
+  /** 파일 → (필요시 축소된) dataURL */
+  function fileToDataUrl(file, maxSide) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onerror = function () { reject(new Error('파일을 읽지 못했습니다.')); };
+      reader.onload = function () {
+        var url = reader.result;
+        var img = new Image();
+        img.onload = function () {
+          var scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+          if (scale >= 1) { resolve({ url: url, width: img.naturalWidth, height: img.naturalHeight }); return; }
+          var c = document.createElement('canvas');
+          c.width = Math.round(img.naturalWidth * scale);
+          c.height = Math.round(img.naturalHeight * scale);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          var type = /image\/(png|webp)/.test(file.type) ? 'image/png' : 'image/jpeg';
+          resolve({ url: c.toDataURL(type, 0.9), width: c.width, height: c.height });
+        };
+        img.onerror = function () { reject(new Error('이미지 형식을 인식하지 못했습니다.')); };
+        img.src = url;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  /* ── 히스토리 ──────────────────────────────────────── */
+  function pushHistory() {
+    var snap = JSON.stringify(state.template);
+    if (history.index >= 0 && history.stack[history.index] === snap) return;
+    history.stack = history.stack.slice(0, history.index + 1);
+    history.stack.push(snap);
+    if (history.stack.length > HISTORY_LIMIT) history.stack.shift();
+    history.index = history.stack.length - 1;
+    updateHistoryButtons();
+  }
+
+  function restoreHistory(idx) {
+    if (idx < 0 || idx >= history.stack.length) return;
+    history.index = idx;
+    state.template = JSON.parse(history.stack[idx]);
+    if (state.selectedId && !state.template.slots.some(function (s) { return s.id === state.selectedId; })) {
+      state.selectedId = null;
+    }
+    MG.preloadTemplate(state.template).then(function () {
+      buildSlotList();
+      buildDocProps();
+      MG.editor.updateFit();
+      MG.editor.requestDraw();
+    });
+    updateHistoryButtons();
+  }
+
+  function updateHistoryButtons() {
+    els.undo.disabled = history.index <= 0;
+    els.redo.disabled = history.index >= history.stack.length - 1;
+  }
+
+  /* ── 템플릿 적용 ───────────────────────────────────── */
+  function setTemplate(tpl, opts) {
+    state.template = tpl;
+    state.selectedId = null;
+    history.stack = [];
+    history.index = -1;
+    return MG.preloadTemplate(tpl).then(function () {
+      buildDocProps();
+      buildSlotList();
+      MG.editor.updateFit();
+      MG.editor.setZoom(1);
+      MG.editor.requestDraw();
+      pushHistory();
+      if (!opts || !opts.silent) toast('템플릿을 불러왔어요: ' + tpl.name);
+      markActiveTemplate(tpl.id);
+    });
+  }
+
+  function markActiveTemplate(id) {
+    Array.prototype.forEach.call(els.gallery.children, function (card) {
+      card.classList.toggle('active', card.dataset.templateId === id);
+    });
+  }
+
+  /* ── 갤러리 ────────────────────────────────────────── */
+  function buildGallery() {
+    var list = MG.listTemplates();
+    els.gallery.innerHTML = '';
+    list.forEach(function (tpl) {
+      var card = el('button', 'tpl-card');
+      card.type = 'button';
+      card.dataset.templateId = tpl.id;
+
+      var thumb = el('div', 'tpl-thumb');
+      var img = new Image();
+      img.alt = tpl.name;
+      img.src = MG.makeThumb(tpl, 240, 240);
+      thumb.appendChild(img);
+
+      var meta = el('div', 'tpl-meta');
+      meta.appendChild(el('strong', null, tpl.name));
+      meta.appendChild(el('span', null, tpl.desc));
+
+      card.appendChild(thumb);
+      card.appendChild(meta);
+      card.addEventListener('click', function () {
+        var fresh = MG.buildTemplate(tpl.id);
+        if (fresh) setTemplate(fresh);
+      });
+      els.gallery.appendChild(card);
+    });
+  }
+
+  /* ── 문서 속성 ─────────────────────────────────────── */
+  function buildDocProps() {
+    var box = els.docProps;
+    box.innerHTML = '';
+    var tpl = state.template;
+    if (!tpl) return;
+
+    box.appendChild(el('h3', null, '전체 설정'));
+
+    var nameRow = el('label', 'field');
+    nameRow.appendChild(el('span', 'field-label', '제목(파일 이름)'));
+    var nameInput = el('input', 'input');
+    nameInput.type = 'text';
+    nameInput.value = state.title;
+    nameInput.addEventListener('input', function () { state.title = nameInput.value; });
+    nameRow.appendChild(nameInput);
+    box.appendChild(nameRow);
+
+    var sizeRow = el('div', 'field');
+    sizeRow.appendChild(el('span', 'field-label', '캔버스 크기 (px)'));
+    var grid = el('div', 'grid-2');
+    ['width', 'height'].forEach(function (k) {
+      var inp = el('input', 'input');
+      inp.type = 'number';
+      inp.min = 100; inp.max = 4000; inp.step = 10;
+      inp.value = tpl[k];
+      inp.addEventListener('change', function () {
+        var v = Math.max(100, Math.min(4000, parseInt(inp.value, 10) || tpl[k]));
+        tpl[k] = v;
+        inp.value = v;
+        MG.editor.updateFit();
+        MG.editor.requestDraw();
+        pushHistory();
+      });
+      grid.appendChild(inp);
+    });
+    sizeRow.appendChild(grid);
+    box.appendChild(sizeRow);
+
+    var bgRow = el('label', 'field');
+    bgRow.appendChild(el('span', 'field-label', '배경색'));
+    var bg = el('input', 'input color');
+    bg.type = 'color';
+    bg.value = tpl.background || '#ffffff';
+    bg.addEventListener('input', function () {
+      tpl.background = bg.value;
+      MG.editor.requestDraw();
+    });
+    bg.addEventListener('change', pushHistory);
+    bgRow.appendChild(bg);
+    box.appendChild(bgRow);
+  }
+
+  /* ── 속성 패널 (슬롯 목록) ─────────────────────────── */
+  function buildSlotList() {
+    var list = els.slotList;
+    list.innerHTML = '';
+    var tpl = state.template;
+    if (!tpl) return;
+
+    els.emptyNote.hidden = tpl.slots.length > 0;
+
+    tpl.slots.forEach(function (slot, index) {
+      list.appendChild(slot.type === 'text' ? textCard(slot, index) : imageCard(slot, index));
+    });
+    highlightSelected();
+  }
+
+  function cardHeader(slot, index) {
+    var head = el('div', 'slot-head');
+    var badge = el('span', 'badge ' + slot.type, slot.type === 'text' ? '대사' : '사진');
+    var name = el('input', 'slot-name');
+    name.type = 'text';
+    name.value = slot.name || (slot.type === 'text' ? '대사' : '사진');
+    name.addEventListener('input', function () { slot.name = name.value; MG.editor.requestDraw(); });
+    name.addEventListener('change', pushHistory);
+
+    var actions = el('div', 'slot-actions');
+
+    var up = el('button', 'icon-btn', '↑');
+    up.title = '순서 위로';
+    up.addEventListener('click', function () { moveSlot(index, -1); });
+
+    var down = el('button', 'icon-btn', '↓');
+    down.title = '순서 아래로';
+    down.addEventListener('click', function () { moveSlot(index, 1); });
+
+    var dup = el('button', 'icon-btn', '⧉');
+    dup.title = '복제';
+    dup.addEventListener('click', function () { duplicateSlot(slot); });
+
+    var del = el('button', 'icon-btn danger', '✕');
+    del.title = '삭제';
+    del.addEventListener('click', function () { deleteSlot(slot.id); });
+
+    actions.append(up, down, dup, del);
+    head.append(badge, name, actions);
+    return head;
+  }
+
+  function geometryFields(slot) {
+    var wrap = el('div', 'field');
+    wrap.appendChild(el('span', 'field-label', '위치 · 크기'));
+    var grid = el('div', 'grid-4');
+    [['x', 'X'], ['y', 'Y'], ['w', '너비'], ['h', '높이']].forEach(function (pair) {
+      var box = el('div', 'mini-field');
+      var inp = el('input', 'input');
+      inp.type = 'number';
+      inp.step = 1;
+      inp.value = Math.round(slot[pair[0]]);
+      inp.dataset.geo = pair[0];
+      inp.addEventListener('input', function () {
+        var v = parseInt(inp.value, 10);
+        if (isNaN(v)) return;
+        slot[pair[0]] = v;
+        MG.editor.requestDraw();
+      });
+      inp.addEventListener('change', pushHistory);
+      box.appendChild(inp);
+      box.appendChild(el('span', 'mini-label', pair[1]));
+      grid.appendChild(box);
+    });
+    wrap.appendChild(grid);
+    return wrap;
+  }
+
+  function makeCard(slot, index) {
+    var card = el('div', 'slot-card');
+    card.dataset.slotId = slot.id;
+    card.addEventListener('mousedown', function () { select(slot.id); });
+    card.appendChild(cardHeader(slot, index));
+    return card;
+  }
+
+  function rangeField(labelText, slot, key, min, max, step, format) {
+    var wrap = el('label', 'field');
+    var label = el('span', 'field-label');
+    label.textContent = labelText;
+    var val = el('b', 'field-value');
+    val.textContent = format ? format(slot[key]) : slot[key];
+    label.appendChild(val);
+    wrap.appendChild(label);
+
+    var input = el('input', 'range');
+    input.type = 'range';
+    input.min = min; input.max = max; input.step = step;
+    input.value = slot[key];
+    input.addEventListener('input', function () {
+      slot[key] = parseFloat(input.value);
+      val.textContent = format ? format(slot[key]) : slot[key];
+      MG.editor.requestDraw();
+    });
+    input.addEventListener('change', pushHistory);
+    wrap.appendChild(input);
+    return wrap;
+  }
+
+  function selectField(labelText, slot, key, options, afterChange) {
+    var wrap = el('label', 'field');
+    wrap.appendChild(el('span', 'field-label', labelText));
+    var sel = el('select', 'input');
+    options.forEach(function (o) {
+      var opt = el('option', null, o[1]);
+      opt.value = o[0];
+      sel.appendChild(opt);
+    });
+    sel.value = slot[key];
+    sel.addEventListener('change', function () {
+      slot[key] = sel.value;
+      MG.editor.requestDraw();
+      pushHistory();
+      if (afterChange) afterChange();
+    });
+    wrap.appendChild(sel);
+    return wrap;
+  }
+
+  function checkField(labelText, slot, key) {
+    var wrap = el('label', 'check');
+    var input = el('input');
+    input.type = 'checkbox';
+    input.checked = !!slot[key];
+    input.addEventListener('change', function () {
+      slot[key] = input.checked;
+      MG.editor.requestDraw();
+      pushHistory();
+    });
+    wrap.appendChild(input);
+    wrap.appendChild(document.createTextNode(' ' + labelText));
+    return wrap;
+  }
+
+  function textCard(slot, index) {
+    var card = makeCard(slot, index);
+
+    var ta = el('textarea', 'textarea');
+    ta.rows = 2;
+    ta.value = slot.text;
+    ta.placeholder = '대사를 입력하세요 (Enter로 줄바꿈)';
+    ta.dataset.role = 'text';
+    ta.addEventListener('input', function () {
+      slot.text = ta.value;
+      MG.editor.requestDraw();
+      clearTimeout(textCommitTimer);
+      textCommitTimer = setTimeout(pushHistory, 600);
+    });
+    card.appendChild(ta);
+
+    var row1 = el('div', 'row');
+    row1.appendChild(selectField('말풍선', slot, 'bubble', [
+      ['ellipse', '둥근 말풍선'], ['round', '사각 말풍선'], ['none', '없음(글자만)']
+    ]));
+    row1.appendChild(selectField('꼬리', slot, 'tail', [
+      ['none', '없음'], ['bottom', '아래'], ['bottom-left', '왼쪽 아래'],
+      ['bottom-right', '오른쪽 아래'], ['left', '왼쪽'], ['right', '오른쪽']
+    ]));
+    card.appendChild(row1);
+
+    var row2 = el('div', 'row');
+    row2.appendChild(selectField('정렬', slot, 'align', [
+      ['center', '가운데'], ['left', '왼쪽'], ['right', '오른쪽']
+    ]));
+    var colorWrap = el('label', 'field');
+    colorWrap.appendChild(el('span', 'field-label', '글자색'));
+    var color = el('input', 'input color');
+    color.type = 'color';
+    color.value = slot.color;
+    color.addEventListener('input', function () { slot.color = color.value; MG.editor.requestDraw(); });
+    color.addEventListener('change', pushHistory);
+    colorWrap.appendChild(color);
+    row2.appendChild(colorWrap);
+    card.appendChild(row2);
+
+    card.appendChild(rangeField('글자 크기', slot, 'fontSize', 10, 120, 1, function (v) { return v + 'px'; }));
+
+    var checks = el('div', 'check-row');
+    checks.appendChild(checkField('칸에 맞춰 자동 축소', slot, 'autoFit'));
+    checks.appendChild(checkField('굵게', slot, 'bold'));
+    checks.appendChild(checkField('검은 외곽선', slot, 'stroke'));
+    card.appendChild(checks);
+
+    card.appendChild(geometryFields(slot));
+    return card;
+  }
+
+  function imageCard(slot, index) {
+    var card = makeCard(slot, index);
+
+    var picker = el('div', 'img-picker');
+    var preview = el('div', 'img-preview');
+    if (slot.src) {
+      var pimg = new Image();
+      pimg.src = slot.src;
+      preview.appendChild(pimg);
+    } else {
+      preview.appendChild(el('span', 'img-empty', '없음'));
+    }
+
+    var pickBtn = el('button', 'btn small', slot.src ? '사진 바꾸기' : '사진 선택');
+    pickBtn.addEventListener('click', function () { requestImage(slot); });
+
+    var clearBtn = el('button', 'btn small ghost', '비우기');
+    clearBtn.disabled = !slot.src;
+    clearBtn.addEventListener('click', function () {
+      slot.src = null;
+      MG.editor.requestDraw();
+      pushHistory();
+      buildSlotList();
+    });
+
+    var btns = el('div', 'img-btns');
+    btns.append(pickBtn, clearBtn);
+    picker.append(preview, btns);
+    card.appendChild(picker);
+
+    // 채우기 방식에 따라 아래 슬라이더 구성이 달라지므로 목록을 다시 그린다
+    card.appendChild(selectField('채우기 방식', slot, 'fit', [
+      ['cover', '꽉 채우기(잘림)'], ['contain', '전체 보이기'], ['fill', '늘리기']
+    ], buildSlotList));
+
+    if (slot.fit !== 'fill') {
+      card.appendChild(rangeField('확대', slot, 'scale', 0.2, 3, 0.01, function (v) { return Math.round(v * 100) + '%'; }));
+      card.appendChild(rangeField('좌우 위치', slot, 'offsetX', -1, 1, 0.01, function (v) { return v.toFixed(2); }));
+      card.appendChild(rangeField('상하 위치', slot, 'offsetY', -1, 1, 0.01, function (v) { return v.toFixed(2); }));
+    }
+    card.appendChild(rangeField('모서리 둥글기', slot, 'radius', 0, 120, 1, function (v) { return v + 'px'; }));
+    card.appendChild(geometryFields(slot));
+    return card;
+  }
+
+  /* ── 슬롯 조작 ─────────────────────────────────────── */
+  function select(id) {
+    if (state.selectedId === id) return;
+    state.selectedId = id;
+    highlightSelected();
+    MG.editor.requestDraw();
+  }
+
+  function highlightSelected() {
+    Array.prototype.forEach.call(els.slotList.children, function (card) {
+      card.classList.toggle('selected', card.dataset.slotId === state.selectedId);
+    });
+  }
+
+  function scrollToSelected() {
+    if (!state.selectedId) return;
+    var card = els.slotList.querySelector('[data-slot-id="' + state.selectedId + '"]');
+    if (card) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  function moveSlot(index, dir) {
+    var slots = state.template.slots;
+    var to = index + dir;
+    if (to < 0 || to >= slots.length) return;
+    var tmp = slots[index];
+    slots[index] = slots[to];
+    slots[to] = tmp;
+    buildSlotList();
+    MG.editor.requestDraw();
+    pushHistory();
+  }
+
+  function duplicateSlot(slot) {
+    var copy = clone(slot);
+    copy.id = MG.uid(slot.type === 'text' ? 't' : 'i');
+    copy.x += 16;
+    copy.y += 16;
+    copy.name = (slot.name || '') + ' 복사';
+    state.template.slots.push(copy);
+    state.selectedId = copy.id;
+    buildSlotList();
+    MG.editor.requestDraw();
+    pushHistory();
+  }
+
+  function deleteSlot(id) {
+    var slots = state.template.slots;
+    var i = slots.findIndex(function (s) { return s.id === id; });
+    if (i === -1) return;
+    slots.splice(i, 1);
+    if (state.selectedId === id) state.selectedId = null;
+    buildSlotList();
+    MG.editor.requestDraw();
+    pushHistory();
+  }
+
+  function addSlot(type) {
+    var tpl = state.template;
+    var w = type === 'text' ? Math.round(tpl.width * 0.34) : Math.round(tpl.width * 0.4);
+    var h = type === 'text' ? Math.round(tpl.height * 0.12) : Math.round(tpl.height * 0.3);
+    var base = {
+      x: Math.round((tpl.width - w) / 2),
+      y: Math.round((tpl.height - h) / 2),
+      w: w, h: h,
+      name: type === 'text' ? '대사 ' + (countType('text') + 1) : '사진 ' + (countType('image') + 1)
+    };
+    var slot = type === 'text' ? MG.textSlot(base) : MG.imageSlot(base);
+    tpl.slots.push(slot);
+    state.selectedId = slot.id;
+    buildSlotList();
+    scrollToSelected();
+    MG.editor.requestDraw();
+    pushHistory();
+  }
+
+  function countType(type) {
+    return state.template.slots.filter(function (s) { return s.type === type; }).length;
+  }
+
+  /* ── 이미지 넣기 ───────────────────────────────────── */
+  function requestImage(slot) {
+    pendingImageSlotId = slot.id;
+    els.imageInput.value = '';
+    els.imageInput.click();
+  }
+
+  function applyImageFile(slot, file) {
+    return fileToDataUrl(file, MAX_IMAGE_SIDE).then(function (res) {
+      slot.src = res.url;
+      slot.scale = 1;
+      slot.offsetX = 0;
+      slot.offsetY = 0;
+      return MG.loadImage(res.url);
+    }).then(function () {
+      buildSlotList();
+      MG.editor.requestDraw();
+      pushHistory();
+    }).catch(function (err) {
+      toast(err.message || '이미지를 넣지 못했습니다.');
+    });
+  }
+
+  /* ── 저장 / 불러오기 ───────────────────────────────── */
+  function readProjects() {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function writeProjects(list) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      return true;
+    } catch (e) {
+      toast('저장 공간이 부족합니다. 오래된 작업을 지워주세요.');
+      return false;
+    }
+  }
+
+  function saveProject() {
+    var name = prompt('저장할 이름을 입력하세요.', state.title || '내 밈');
+    if (name === null) return;
+    name = name.trim() || '이름 없음';
+    var list = readProjects();
+    var entry = {
+      id: 'p_' + Date.now().toString(36),
+      name: name,
+      savedAt: new Date().toISOString(),
+      template: state.template
+    };
+    list.unshift(entry);
+    if (writeProjects(list)) {
+      state.title = name;
+      buildDocProps();
+      buildSavedList();
+      toast('저장했어요: ' + name);
+    }
+  }
+
+  function buildSavedList() {
+    var box = els.savedList;
+    box.innerHTML = '';
+    var list = readProjects();
+    if (!list.length) {
+      box.appendChild(el('p', 'hint', '저장된 작업이 없습니다.'));
+      return;
+    }
+    list.forEach(function (p) {
+      var row = el('div', 'saved-item');
+      var btn = el('button', 'saved-open');
+      btn.type = 'button';
+      btn.appendChild(el('strong', null, p.name));
+      btn.appendChild(el('span', null, new Date(p.savedAt).toLocaleString('ko-KR')));
+      btn.addEventListener('click', function () {
+        state.title = p.name;
+        setTemplate(clone(p.template));
+      });
+
+      var del = el('button', 'icon-btn danger', '✕');
+      del.title = '삭제';
+      del.addEventListener('click', function () {
+        var next = readProjects().filter(function (x) { return x.id !== p.id; });
+        writeProjects(next);
+        buildSavedList();
+      });
+
+      row.append(btn, del);
+      box.appendChild(row);
+    });
+  }
+
+  function exportJson() {
+    var data = JSON.stringify({ title: state.title, template: state.template }, null, 2);
+    var blob = new Blob([data], { type: 'application/json' });
+    downloadBlob(blob, safeFileName(state.title) + '.memegen.json');
+  }
+
+  function importJson(file) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var parsed = JSON.parse(reader.result);
+        var tpl = parsed.template || parsed;
+        if (!tpl || !Array.isArray(tpl.slots)) throw new Error('형식이 올바르지 않습니다.');
+        state.title = parsed.title || tpl.name || '내 밈';
+        setTemplate(tpl);
+      } catch (e) {
+        toast('JSON을 읽지 못했습니다: ' + e.message);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  /* ── 내보내기 ──────────────────────────────────────── */
+  function safeFileName(s) {
+    return String(s || 'meme').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 60) || 'meme';
+  }
+
+  function downloadBlob(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    // 브라우저가 다운로드를 시작하기 전에 앵커가 사라지면 파일 이름이 무시될 수 있다
+    setTimeout(function () {
+      if (a.parentNode) a.parentNode.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 1500);
+  }
+
+  function downloadPng() {
+    var canvas = MG.renderToCanvas(state.template, 2);
+    var name = safeFileName(state.title) + '.png';
+    if (canvas.toBlob) {
+      canvas.toBlob(function (blob) {
+        if (!blob) { toast('이미지를 만들지 못했습니다.'); return; }
+        downloadBlob(blob, name);
+        toast('PNG로 저장했어요.');
+      }, 'image/png');
+    } else {
+      var a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = name;
+      a.click();
+    }
+  }
+
+  /* ── 초기화 ────────────────────────────────────────── */
+  function cacheEls() {
+    els.gallery = $('#gallery');
+    els.slotList = $('#slot-list');
+    els.docProps = $('#doc-props');
+    els.emptyNote = $('#empty-note');
+    els.savedList = $('#saved-list');
+    els.canvas = $('#canvas');
+    els.canvasWrap = $('#canvas-wrap');
+    els.toast = $('#toast');
+    els.imageInput = $('#hidden-image-input');
+    els.jsonInput = $('#hidden-json-input');
+    els.zoomLabel = $('#zoom-label');
+    els.undo = $('#btn-undo');
+    els.redo = $('#btn-redo');
+  }
+
+  function bindUi() {
+    $('#btn-add-text').addEventListener('click', function () { addSlot('text'); });
+    $('#btn-add-image').addEventListener('click', function () { addSlot('image'); });
+
+    $('#btn-zoom-in').addEventListener('click', function () { MG.editor.setZoom(MG.editor.zoom * 1.2); });
+    $('#btn-zoom-out').addEventListener('click', function () { MG.editor.setZoom(MG.editor.zoom / 1.2); });
+    $('#btn-zoom-fit').addEventListener('click', function () { MG.editor.zoomFit(); });
+
+    $('#chk-guides').addEventListener('change', function (e) {
+      MG.editor.showGuides = e.target.checked;
+      MG.editor.requestDraw();
+    });
+
+    $('#btn-download').addEventListener('click', downloadPng);
+    $('#btn-save').addEventListener('click', saveProject);
+    $('#btn-load').addEventListener('click', function () {
+      buildSavedList();
+      els.savedList.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      toast('왼쪽 아래 "저장된 작업"에서 골라주세요.');
+    });
+    $('#btn-export-json').addEventListener('click', exportJson);
+    $('#btn-import-json').addEventListener('click', function () {
+      els.jsonInput.value = '';
+      els.jsonInput.click();
+    });
+
+    els.undo.addEventListener('click', function () { restoreHistory(history.index - 1); });
+    els.redo.addEventListener('click', function () { restoreHistory(history.index + 1); });
+
+    els.imageInput.addEventListener('change', function () {
+      var file = els.imageInput.files && els.imageInput.files[0];
+      if (!file || !pendingImageSlotId) return;
+      var slot = state.template.slots.filter(function (s) { return s.id === pendingImageSlotId; })[0];
+      pendingImageSlotId = null;
+      if (slot) applyImageFile(slot, file);
+    });
+
+    els.jsonInput.addEventListener('change', function () {
+      var file = els.jsonInput.files && els.jsonInput.files[0];
+      if (file) importJson(file);
+    });
+
+    $('#custom-bg').addEventListener('change', function (e) {
+      var file = e.target.files && e.target.files[0];
+      if (!file) return;
+      fileToDataUrl(file, MAX_IMAGE_SIDE).then(function (res) {
+        var tpl = MG.templateFromImage(res.url, res.width, res.height);
+        state.title = '내 밈';
+        return setTemplate(tpl);
+      }).then(function () {
+        toast('배경을 올렸어요. "＋ 대사 칸"으로 말풍선을 추가해보세요.');
+      }).catch(function (err) { toast(err.message || '이미지를 불러오지 못했습니다.'); });
+      e.target.value = '';
+    });
+
+    // 패널 접기
+    Array.prototype.forEach.call(document.querySelectorAll('.panel-toggle'), function (btn) {
+      btn.addEventListener('click', function () {
+        var panel = document.getElementById(btn.dataset.target);
+        panel.classList.toggle('collapsed');
+        MG.editor.updateFit();
+        MG.editor.requestDraw();
+      });
+    });
+
+    // 전역 단축키
+    document.addEventListener('keydown', function (e) {
+      var mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+      var k = e.key.toLowerCase();
+      if (k === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) restoreHistory(history.index + 1);
+        else restoreHistory(history.index - 1);
+      } else if (k === 's') {
+        e.preventDefault();
+        saveProject();
+      } else if (k === 'e') {
+        e.preventDefault();
+        downloadPng();
+      }
+    });
+  }
+
+  function attachEditor() {
+    MG.editor.attach(els.canvas, els.canvasWrap, {
+      getTemplate: function () { return state.template; },
+      getSelectedId: function () { return state.selectedId; },
+      setSelectedId: function (id) {
+        state.selectedId = id;
+        highlightSelected();
+        scrollToSelected();
+      },
+      onSlotGeometry: function (slot) {
+        var card = els.slotList.querySelector('[data-slot-id="' + slot.id + '"]');
+        if (!card) return;
+        ['x', 'y', 'w', 'h'].forEach(function (k) {
+          var inp = card.querySelector('[data-geo="' + k + '"]');
+          if (inp && document.activeElement !== inp) inp.value = Math.round(slot[k]);
+        });
+      },
+      commitChange: pushHistory,
+      deleteSlot: deleteSlot,
+      requestImage: requestImage,
+      applyImageFile: applyImageFile,
+      focusText: function (slot) {
+        var card = els.slotList.querySelector('[data-slot-id="' + slot.id + '"]');
+        if (!card) return;
+        var ta = card.querySelector('[data-role="text"]');
+        if (ta) { ta.focus(); ta.select(); }
+      },
+      onZoom: function (z) { els.zoomLabel.textContent = Math.round(z * MG.editor.fitScale * 100) + '%'; },
+      toast: toast
+    });
+  }
+
+  function init() {
+    cacheEls();
+    buildGallery();
+    bindUi();
+    attachEditor();
+    buildSavedList();
+    setTemplate(MG.buildTemplate('comic-8'), { silent: true });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})(window);
