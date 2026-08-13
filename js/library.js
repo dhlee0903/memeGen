@@ -58,6 +58,7 @@
     if (location.protocol === 'file:') return Promise.resolve([]);
 
     return getJson(MG.LIBRARY.manifest).then(function (data) {
+      MG.setHiddenIds((data && data.hidden) || []);
       var list = (data && data.templates) || [];
       return Promise.all(list.map(function (entry) {
         var url = entry.file || (MG.LIBRARY.dir + entry.id + '.json');

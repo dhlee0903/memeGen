@@ -374,9 +374,16 @@
   global.MG.textSlot = textSlot;
   global.MG.imageSlot = imageSlot;
 
-  /* 저장소에 게시된 템플릿(assets/templates/index.json 에서 불러온 것).
-   * 코드에 박힌 내장 템플릿과 달리 실행 중에 추가된다. */
+  /* 저장소에서 불러온 것들(assets/templates/index.json).
+   *  PUBLISHED — 새로 게시한 템플릿, 또는 내장 템플릿을 덮어쓴 버전
+   *  HIDDEN    — 갤러리에서 감출 내장 템플릿 id
+   * 내장 템플릿은 코드에 있어 파일을 지울 수 없으므로, 삭제는 "숨김"으로
+   * 수정은 "같은 id 로 덮어쓰기"로 처리한다. */
   var PUBLISHED = [];
+  var HIDDEN = {};
+
+  var BUILTIN_IDS = {};
+  BUILDERS.forEach(function (b) { BUILTIN_IDS[b().id] = true; });
 
   function reid(tpl) {
     // 슬롯 id 가 겹치면 선택/편집이 엉키므로 인스턴스마다 새로 발급한다
@@ -385,7 +392,9 @@
     return copy;
   }
 
-  /** 게시된 템플릿을 갤러리에 추가 */
+  global.MG.isBuiltin = function (id) { return !!BUILTIN_IDS[id]; };
+
+  /** 게시된(또는 덮어쓴) 템플릿을 등록 */
   global.MG.addTemplate = function (tpl) {
     if (!tpl || !tpl.id || !Array.isArray(tpl.slots)) return false;
     var i = PUBLISHED.findIndex(function (t) { return t.id === tpl.id; });
@@ -398,21 +407,59 @@
     PUBLISHED = PUBLISHED.filter(function (t) { return t.id !== id; });
   };
 
-  /** 매번 새 인스턴스를 만들어 반환(슬롯 id 중복 방지) */
+  global.MG.setHiddenIds = function (ids) {
+    HIDDEN = {};
+    (ids || []).forEach(function (id) { HIDDEN[id] = true; });
+  };
+  global.MG.hiddenIds = function () { return Object.keys(HIDDEN); };
+  global.MG.hideTemplate = function (id) { HIDDEN[id] = true; };
+  global.MG.unhideTemplate = function (id) { delete HIDDEN[id]; };
+
+  function overrideOf(id) {
+    for (var i = 0; i < PUBLISHED.length; i++) if (PUBLISHED[i].id === id) return PUBLISHED[i];
+    return null;
+  }
+
+  /** 매번 새 인스턴스를 만들어 반환(슬롯 id 중복 방지). 덮어쓴 버전이 우선. */
   global.MG.buildTemplate = function (id) {
+    var over = overrideOf(id);
+    if (over) return reid(over);
     for (var i = 0; i < BUILDERS.length; i++) {
       var t = BUILDERS[i]();
       if (t.id === id) return t;
     }
-    for (var j = 0; j < PUBLISHED.length; j++) {
-      if (PUBLISHED[j].id === id) return reid(PUBLISHED[j]);
-    }
     return null;
   };
 
-  /** 갤러리 표시용 목록 — 게시된 것이 먼저 */
-  global.MG.listTemplates = function () {
-    return PUBLISHED.map(reid).concat(BUILDERS.map(function (b) { return b(); }));
+  /**
+   * 갤러리 표시용 목록.
+   * 새로 게시한 것이 앞에 오고, 내장 템플릿은 원래 순서를 지킨다.
+   * 덮어쓴 내장 템플릿은 그 자리에서 덮어쓴 버전으로 바뀐다.
+   * @param {boolean} includeHidden 숨긴 것까지 포함(관리자용)
+   */
+  global.MG.listTemplates = function (includeHidden) {
+    var out = [];
+
+    PUBLISHED.forEach(function (t) {
+      if (BUILTIN_IDS[t.id]) return;            // 내장 덮어쓰기는 아래에서 제자리에 넣는다
+      if (!includeHidden && HIDDEN[t.id]) return;
+      var c = reid(t);
+      c.hidden = !!HIDDEN[t.id];
+      out.push(c);
+    });
+
+    BUILDERS.forEach(function (b) {
+      var base = b();
+      if (!includeHidden && HIDDEN[base.id]) return;
+      var over = overrideOf(base.id);
+      var t = over ? reid(over) : base;
+      t.builtin = true;
+      t.overridden = !!over;
+      t.hidden = !!HIDDEN[base.id];
+      out.push(t);
+    });
+
+    return out;
   };
 
   /** 업로드한 배경 이미지로 만드는 커스텀 템플릿 */

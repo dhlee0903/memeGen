@@ -143,9 +143,9 @@
   }
 
   function buildGallery() {
-    var list = MG.listTemplates();
-    els.gallery.innerHTML = '';
     var admin = MG.isAdmin && MG.isAdmin();
+    var list = MG.listTemplates(admin);   // 관리자에게는 숨긴 것도 보여준다
+    els.gallery.innerHTML = '';
 
     list.forEach(function (tpl) {
       // 삭제 버튼을 품어야 해서 카드는 button 이 아니라 div 다(버튼 중첩 불가)
@@ -176,39 +176,94 @@
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
       });
 
-      // 게시된 템플릿만 지울 수 있다. 내장 템플릿은 코드에 있어 지울 수 없다.
-      if (admin && tpl.published) {
-        var del = el('button', 'tpl-del', '✕');
-        del.type = 'button';
-        del.title = '이 템플릿 삭제';
-        del.setAttribute('aria-label', tpl.name + ' 삭제');
-        del.addEventListener('click', function (e) {
-          e.stopPropagation();
-          deletePublished(tpl.id, tpl.name);
-        });
-        card.appendChild(del);
-      }
-
+      if (admin) addAdminCardTools(card, tpl);
       els.gallery.appendChild(card);
     });
   }
 
-  /** 게시된 템플릿을 저장소에서 지운다 */
-  function deletePublished(id, name) {
-    if (!confirm('"' + name + '" 템플릿을 삭제할까요?\n사이트에서 사라지고 되돌릴 수 없습니다.')) return;
+  /** 카드 상태에 따라 삭제 / 되돌리기 버튼을 붙인다 */
+  function addAdminCardTools(card, tpl) {
+    if (tpl.hidden) card.classList.add('is-hidden-tpl');
+    if (tpl.hidden || tpl.overridden) {
+      card.appendChild(el('span', 'tpl-tag', tpl.hidden ? '숨김' : '수정됨'));
+    }
 
-    toast('삭제하는 중…');
-    var wasOpen = state.template && (state.template.publishedId || state.template.id) === id;
+    var tools = el('div', 'tpl-tools');
 
-    MG.admin.unpublish(id).then(function () {
-      MG.removeTemplate(id);
-      buildGallery();
-      toast('삭제했어요. 사이트 반영까지 1분쯤 걸립니다.');
-      // 지금 열려 있던 템플릿이면 기본 템플릿으로 돌아간다
-      if (wasOpen) return setTemplate(MG.buildTemplate('comic-page-8'), { silent: true });
-      markActiveTemplate(state.template.id);
+    // 숨긴 내장 템플릿은 복구, 덮어쓴 내장 템플릿은 원래대로
+    if (tpl.hidden) {
+      tools.appendChild(iconBtn('↺', '다시 보이게', function () { restoreTemplate(tpl); }));
+    } else {
+      if (tpl.overridden) {
+        tools.appendChild(iconBtn('↺', '수정 취소하고 원래대로', function () { revertTemplate(tpl); }));
+      }
+      tools.appendChild(iconBtn('✕', tpl.builtin ? '갤러리에서 숨기기' : '삭제', function () {
+        removeTemplate(tpl);
+      }, 'danger'));
+    }
+
+    card.appendChild(tools);
+  }
+
+  function iconBtn(glyph, label, onClick, extra) {
+    var b = el('button', 'tpl-tool' + (extra ? ' ' + extra : ''), glyph);
+    b.type = 'button';
+    b.title = label;
+    b.setAttribute('aria-label', label);
+    b.addEventListener('click', function (e) {
+      e.stopPropagation();
+      onClick();
+    });
+    return b;
+  }
+
+  /** 작업 후 갤러리와 현재 템플릿을 정리한다 */
+  function afterAdminChange(id, message, reopen) {
+    buildGallery();
+    toast(message);
+    var open = state.template && (state.template.publishedId || state.template.id) === id;
+    if (!open) { markActiveTemplate(state.template.id); return; }
+    var next = reopen ? MG.buildTemplate(id) : null;
+    return setTemplate(next || MG.buildTemplate('comic-page-8'), { silent: true });
+  }
+
+  function removeTemplate(tpl) {
+    var builtin = tpl.builtin;
+    var msg = builtin
+      ? '"' + tpl.name + '" 을(를) 갤러리에서 숨길까요?\n내장 템플릿이라 완전히 지울 수는 없고, 나중에 다시 보이게 할 수 있습니다.'
+      : '"' + tpl.name + '" 템플릿을 삭제할까요?\n사이트에서 사라지고 되돌릴 수 없습니다.';
+    if (!confirm(msg)) return;
+
+    toast(builtin ? '숨기는 중…' : '삭제하는 중…');
+    var job = builtin ? MG.admin.hide(tpl.id) : MG.admin.unpublish(tpl.id);
+
+    job.then(function () {
+      if (builtin) { MG.removeTemplate(tpl.id); MG.hideTemplate(tpl.id); }
+      else MG.removeTemplate(tpl.id);
+      return afterAdminChange(tpl.id, (builtin ? '숨겼어요.' : '삭제했어요.') + ' 사이트 반영까지 1분쯤 걸립니다.');
     }).catch(function (err) {
-      toast(err.message || '삭제하지 못했습니다.');
+      toast(err.message || '처리하지 못했습니다.');
+    });
+  }
+
+  function restoreTemplate(tpl) {
+    toast('복구하는 중…');
+    MG.admin.unhide(tpl.id).then(function () {
+      MG.unhideTemplate(tpl.id);
+      return afterAdminChange(tpl.id, '다시 보이게 했어요.', true);
+    }).catch(function (err) {
+      toast(err.message || '복구하지 못했습니다.');
+    });
+  }
+
+  function revertTemplate(tpl) {
+    if (!confirm('"' + tpl.name + '" 의 수정을 취소하고 원래 내장 템플릿으로 되돌릴까요?')) return;
+    toast('되돌리는 중…');
+    MG.admin.unpublish(tpl.id).then(function () {
+      MG.removeTemplate(tpl.id);
+      return afterAdminChange(tpl.id, '원래대로 되돌렸어요.', true);
+    }).catch(function (err) {
+      toast(err.message || '되돌리지 못했습니다.');
     });
   }
 
@@ -1021,17 +1076,29 @@
     var group = $('#admin-tools');
     group.hidden = false;
 
+    // 지금 템플릿을 그 자리에 덮어쓴다 (내장 템플릿이면 원본 수정 효과)
+    $('#btn-overwrite').addEventListener('click', function () {
+      doPublish(state.template.id);
+    });
+    // 항상 새 템플릿으로 게시
     $('#btn-publish').addEventListener('click', function () {
+      doPublish(null);
+    });
+
+    function doPublish(forceId) {
       var tpl = state.template;
-      var title = prompt('게시할 템플릿 이름', tpl.publishedId ? tpl.name : state.title);
+      var overwriting = !!forceId;
+      var title = prompt(
+        overwriting ? '"' + tpl.name + '" 을(를) 수정합니다. 이름' : '새 템플릿 이름',
+        overwriting ? tpl.name : state.title);
       if (title === null) return;
       title = title.trim();
       if (!title) { toast('이름을 입력해주세요.'); return; }
       var desc = prompt('한 줄 설명 (비워도 됩니다)', tpl.desc || '');
       if (desc === null) return;
 
-      toast('게시하는 중…');
-      MG.admin.publish(tpl, title, desc).then(function (id) {
+      toast(overwriting ? '수정하는 중…' : '게시하는 중…');
+      MG.admin.publish(tpl, title, desc, forceId).then(function (id) {
         tpl.publishedId = id;
         // 배포를 기다리지 않고 갤러리에 바로 반영한다
         var entry = clone(tpl);
@@ -1041,12 +1108,12 @@
         MG.addTemplate(entry);
         buildGallery();
         markActiveTemplate(id);
-        toast('게시했어요. 사이트 반영까지 1분쯤 걸립니다.');
+        toast((overwriting ? '수정했어요.' : '게시했어요.') + ' 사이트 반영까지 1분쯤 걸립니다.');
         updateAdminButtons();
       }).catch(function (err) {
-        toast(err.message || '게시하지 못했습니다.');
+        toast(err.message || (overwriting ? '수정하지 못했습니다.' : '게시하지 못했습니다.'));
       });
-    });
+    }
 
     $('#btn-token').addEventListener('click', function () {
       if (!MG.admin.hasToken()) {

@@ -161,17 +161,24 @@
 
   MG.adminCheck = checkAccess;
 
+  var MANIFEST_PATH = 'assets/templates/index.json';
+
   async function readManifest() {
-    var f = await getFile('assets/templates/index.json');
-    if (!f) return { templates: [] };
+    var f = await getFile(MANIFEST_PATH);
+    if (!f) return { templates: [], hidden: [] };
     try {
       var text = new TextDecoder().decode(Uint8Array.from(atob(f.content.replace(/\n/g, '')), function (c) { return c.charCodeAt(0); }));
       var data = JSON.parse(text);
       if (!Array.isArray(data.templates)) data.templates = [];
+      if (!Array.isArray(data.hidden)) data.hidden = [];
       return data;
     } catch (e) {
-      return { templates: [] };
+      return { templates: [], hidden: [] };
     }
+  }
+
+  function writeManifest(manifest, message) {
+    return putFile(MANIFEST_PATH, b64utf8(JSON.stringify(manifest, null, 2)), message);
   }
 
   /* ── 게시 / 게시 취소 ──────────────────────────────── */
@@ -195,42 +202,79 @@
      * @param {string} title 게시 이름
      * @param {string} desc  한 줄 설명
      */
-    publish: async function (tpl, title, desc) {
+    /**
+     * 템플릿을 게시한다.
+     * @param {string} [forceId] 이 id 로 덮어쓴다. 내장 템플릿 id 를 주면
+     *                           갤러리에서 그 자리를 대체한다(원본 수정 효과).
+     */
+    publish: async function (tpl, title, desc, forceId) {
       if (!await ensureToken()) throw new Error('취소했습니다.');
       await checkAccess();
 
-      var id = tpl.publishedId || ('user-' + slugify(title, Date.now().toString(36)));
+      var id = forceId || tpl.publishedId || ('user-' + slugify(title, Date.now().toString(36)));
+      var builtin = MG.isBuiltin(id);
+
       var packed = MG.packAssets(tpl);
       packed.id = id;
       packed.name = title;
       packed.desc = desc || '';
       delete packed.publishedId;
+      delete packed.builtin;
+      delete packed.overridden;
+      delete packed.hidden;
+      delete packed.published;
 
       // 배경이 내장 이미지가 아니면(직접 올린 그림) 그대로 data URI 로 담긴다.
-      var json = JSON.stringify(packed, null, 2);
       var path = 'assets/templates/user/' + id + '.json';
-      await putFile(path, b64utf8(json), 'feat(template): ' + title + ' 게시');
+      await putFile(path, b64utf8(JSON.stringify(packed, null, 2)),
+        (builtin ? 'feat(template): ' + title + ' 수정' : 'feat(template): ' + title + ' 게시'));
 
       var manifest = await readManifest();
       var entry = { id: id, name: title, desc: packed.desc, file: path };
+      if (builtin) entry.overrides = true;
       var i = manifest.templates.findIndex(function (t) { return t.id === id; });
       if (i === -1) manifest.templates.push(entry); else manifest.templates[i] = entry;
-      await putFile('assets/templates/index.json',
-        b64utf8(JSON.stringify(manifest, null, 2)),
-        'chore(template): 게시 목록 갱신 (' + title + ')');
+      // 숨겨둔 것을 다시 게시하면 숨김을 푼다
+      manifest.hidden = manifest.hidden.filter(function (h) { return h !== id; });
+      await writeManifest(manifest, 'chore(template): 게시 목록 갱신 (' + title + ')');
 
+      MG.unhideTemplate(id);
       return id;
     },
 
+    /** 게시본(또는 덮어쓴 버전)을 지운다. 내장 템플릿이면 원본으로 되돌아간다. */
     unpublish: async function (id) {
       if (!await ensureToken()) throw new Error('취소했습니다.');
+      await checkAccess();
       var manifest = await readManifest();
       var entry = manifest.templates.filter(function (t) { return t.id === id; })[0];
       manifest.templates = manifest.templates.filter(function (t) { return t.id !== id; });
-      await putFile('assets/templates/index.json',
-        b64utf8(JSON.stringify(manifest, null, 2)),
-        'chore(template): 게시 취소 (' + id + ')');
+      await writeManifest(manifest, 'chore(template): ' + id + ' 게시 취소');
       if (entry && entry.file) await deleteFile(entry.file, 'chore(template): ' + id + ' 삭제');
+    },
+
+    /** 내장 템플릿을 갤러리에서 감춘다(코드에 있어 지울 수는 없다) */
+    hide: async function (id) {
+      if (!await ensureToken()) throw new Error('취소했습니다.');
+      await checkAccess();
+      var manifest = await readManifest();
+
+      // 덮어쓴 버전이 있으면 같이 정리한다
+      var entry = manifest.templates.filter(function (t) { return t.id === id; })[0];
+      manifest.templates = manifest.templates.filter(function (t) { return t.id !== id; });
+      if (manifest.hidden.indexOf(id) === -1) manifest.hidden.push(id);
+
+      await writeManifest(manifest, 'chore(template): ' + id + ' 숨김');
+      if (entry && entry.file) await deleteFile(entry.file, 'chore(template): ' + id + ' 덮어쓴 버전 삭제');
+    },
+
+    /** 숨긴 내장 템플릿을 다시 보이게 한다 */
+    unhide: async function (id) {
+      if (!await ensureToken()) throw new Error('취소했습니다.');
+      await checkAccess();
+      var manifest = await readManifest();
+      manifest.hidden = manifest.hidden.filter(function (h) { return h !== id; });
+      await writeManifest(manifest, 'chore(template): ' + id + ' 복구');
     },
 
     /** 토큰을 새로 입력받는다 */

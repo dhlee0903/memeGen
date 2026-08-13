@@ -209,19 +209,23 @@ h1, h2, h3 { margin: 0; }
 .tpl-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .tpl-card.active { border-color: var(--accent); background: var(--accent-soft); }
 
-/* 게시된 템플릿 삭제 (관리자)
+/* 템플릿 카드 관리 도구 (관리자)
  * 항상 보이게 둔다. hover 로만 나타나게 했더니 있는 줄 모르고,
  * 터치 기기에서는 hover 가 없어 아예 누를 수 없었다. */
-.tpl-del {
+.tpl-tools {
   position: absolute;
   top: 5px;
   right: 5px;
+  display: flex;
+  gap: 4px;
+}
+.tpl-tool {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 92, 108, .5);
+  border: 1px solid var(--line);
   background: rgba(12, 15, 20, .9);
-  color: var(--danger);
+  color: var(--text-dim);
   font-size: 13px;
   font-weight: 700;
   line-height: 1;
@@ -230,8 +234,26 @@ h1, h2, h3 { margin: 0; }
   place-items: center;
   transition: background .12s, color .12s, transform .12s;
 }
-.tpl-del:hover { background: var(--danger); border-color: var(--danger); color: #fff; transform: scale(1.08); }
-.tpl-del:focus-visible { outline: 2px solid var(--danger); outline-offset: 2px; }
+.tpl-tool:hover { background: #2f3946; color: var(--text); transform: scale(1.08); }
+.tpl-tool:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tpl-tool.danger { border-color: rgba(255, 92, 108, .5); color: var(--danger); }
+.tpl-tool.danger:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+/* 숨김 / 수정됨 표시 */
+.tpl-tag {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(12, 15, 20, .9);
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+}
+.tpl-card.is-hidden-tpl .tpl-thumb,
+.tpl-card.is-hidden-tpl .tpl-meta { opacity: .38; }
 
 .tpl-thumb {
   aspect-ratio: 1 / 1;
